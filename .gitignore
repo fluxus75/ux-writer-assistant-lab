@@ -1,0 +1,18 @@
+# Python virtual environments
+backend/.venv/
+
+# Node dependencies
+fe-test/node_modules/
+
+# Environment files
+.env
+backend/.env
+fe-test/.env
+
+# Test caches / benchmarks
+.pytest_cache/
+.benchmarks/
+
+# Build outputs
+fe-test/dist/
+

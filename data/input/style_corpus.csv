@@ -1,0 +1,4 @@
+sid,device,feature_norm,style_tag,en_line,notes
+S001,robot_vacuum,charging,concise.system.action,Returning to charging station.,
+S002,robot_vacuum,start_cleaning,concise.system.action,Starting cleaning.,
+S003,robot_vacuum,pause,concise.system.action,Paused.,

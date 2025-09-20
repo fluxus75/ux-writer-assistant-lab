@@ -1,0 +1,4 @@
+length_max: 40
+forbidden_terms: ["charger"]
+replace_map:
+  "charger": "charging station"

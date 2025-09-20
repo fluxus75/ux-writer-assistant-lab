@@ -1,0 +1,4 @@
+ko_term,en_term,device,must_use,pos,synonyms_ko,notes
+충전대,charging station,robot_vacuum,True,noun,,
+청소,cleaning,robot_vacuum,True,noun,,
+일시정지,pause,robot_vacuum,True,verb,,

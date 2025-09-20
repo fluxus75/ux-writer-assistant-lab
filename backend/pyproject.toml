@@ -1,0 +1,24 @@
+[project]
+name = "ux-writer-assistant-backend"
+version = "0.1.0"
+description = "FastAPI backend for UX Writer Assistant (lab, file-first + RAG-ready)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.0",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.2.1",
+    "python-multipart>=0.0.9",
+    "pyyaml>=6.0",
+    "openai>=1.30.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "httpx>=0.27.0"
+]
+
+[tool.uv]
+# Using default PyPI index; no custom index-url.

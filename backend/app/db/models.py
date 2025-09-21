@@ -6,7 +6,8 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
-from sqlalchemy import JSON, DateTime, Enum as SQLEnum, ForeignKey, Integer, String, Text
+
+from sqlalchemy import JSON, Boolean, DateTime, Enum as SQLEnum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -39,6 +40,55 @@ class CommentStatus(str, Enum):
 class ApprovalDecision(str, Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
+
+
+
+class StyleGuideEntry(Base):
+    __tablename__ = "style_guide_entries"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    language: Mapped[str] = mapped_column(String(16), nullable=False, default="en")
+    device: Mapped[Optional[str]] = mapped_column(String(64))
+    feature_norm: Mapped[Optional[str]] = mapped_column(String(255))
+    style_tag: Mapped[Optional[str]] = mapped_column(String(255))
+    tone: Mapped[Optional[str]] = mapped_column(String(255))
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class GlossaryEntry(Base):
+    __tablename__ = "glossary_entries"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_language: Mapped[str] = mapped_column(String(16), nullable=False, default="ko")
+    target_language: Mapped[str] = mapped_column(String(16), nullable=False, default="en")
+    source_term: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_term: Mapped[str] = mapped_column(String(255), nullable=False)
+    device: Mapped[Optional[str]] = mapped_column(String(64))
+    must_use: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    part_of_speech: Mapped[Optional[str]] = mapped_column(String(64))
+    synonyms: Mapped[Optional[str]] = mapped_column(Text)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class ContextSnippet(Base):
+    __tablename__ = "context_snippets"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    device: Mapped[Optional[str]] = mapped_column(String(64))
+    feature: Mapped[Optional[str]] = mapped_column(String(255))
+    feature_norm: Mapped[Optional[str]] = mapped_column(String(255))
+    style_tag: Mapped[Optional[str]] = mapped_column(String(255))
+    user_utterance: Mapped[Optional[str]] = mapped_column(Text)
+    response_case_raw: Mapped[Optional[str]] = mapped_column(String(255))
+    response_case_norm: Mapped[Optional[str]] = mapped_column(String(255))
+    response_case_tags: Mapped[Optional[List[str]]] = mapped_column(JSON)
+    response_text: Mapped[Optional[str]] = mapped_column(Text)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
 
 
 class GuardrailScope(str, Enum):
@@ -83,7 +133,13 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    requests: Mapped[List["Request"]] = relationship(back_populates="requested_by_user", cascade="all, delete-orphan")
+
+    requests: Mapped[List["Request"]] = relationship(
+        back_populates="requested_by_user",
+        cascade="all, delete-orphan",
+        foreign_keys="Request.requested_by",
+    )
+
     assigned_requests: Mapped[List["Request"]] = relationship(
         back_populates="assigned_writer_user",
         foreign_keys="Request.assigned_writer_id",
@@ -234,6 +290,9 @@ __all__ = [
     "DraftVersion",
     "Approval",
     "Comment",
+    "StyleGuideEntry",
+    "GlossaryEntry",
+    "ContextSnippet",
     "GuardrailRule",
     "RagIngestion",
     "ExportJob",

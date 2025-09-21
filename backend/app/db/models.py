@@ -6,6 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
+
 from sqlalchemy import JSON, Boolean, DateTime, Enum as SQLEnum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -39,6 +40,7 @@ class CommentStatus(str, Enum):
 class ApprovalDecision(str, Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
+
 
 
 class StyleGuideEntry(Base):
@@ -88,6 +90,7 @@ class ContextSnippet(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+
 class GuardrailScope(str, Enum):
     GLOBAL = "global"
     FEATURE = "feature"
@@ -130,11 +133,13 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
+
     requests: Mapped[List["Request"]] = relationship(
         back_populates="requested_by_user",
         cascade="all, delete-orphan",
         foreign_keys="Request.requested_by",
     )
+
     assigned_requests: Mapped[List["Request"]] = relationship(
         back_populates="assigned_writer_user",
         foreign_keys="Request.assigned_writer_id",

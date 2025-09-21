@@ -7,11 +7,16 @@ app/api/v1/translate.py
 app/core/io_utils.py
 app/core/settings.py
 app/core/state.py
+app/db/__init__.py
+app/db/models.py
+app/db/session.py
 app/models/contracts.py
 app/services/guardrails/service.py
 app/services/ingest/service.py
 app/services/llm/__init__.py
 app/services/llm/client.py
+app/services/rag/__init__.py
+app/services/rag/config.py
 app/services/retrieve/service.py
 app/services/translate/prompting.py
 app/services/translate/service.py

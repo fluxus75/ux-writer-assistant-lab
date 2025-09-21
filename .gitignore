@@ -16,3 +16,7 @@ fe-test/.env
 # Build outputs
 fe-test/dist/
 
+# Local database files
+backend/ux_writer_lab.db
+ux_writer_lab.db
+

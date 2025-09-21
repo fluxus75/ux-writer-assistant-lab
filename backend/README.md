@@ -1,13 +1,14 @@
 # UX Writer Assistant — Backend (FastAPI)
 
-This is a **file-first** lab backend to test ingest/retrieve/translate flows.
+This is a **file-first** lab backend to test ingest/retrieve/translate flows. Day 2부터는
+PostgreSQL/Qdrant 기반 프로덕션 구조를 준비하기 위해 ORM 모델과 설정 스캐폴드를 포함한다.
 
 ## Quickstart (with `uv`)
 ```bash
 # from repo root
 cd backend
 uv venv .venv
-uv pip install -e .
+uv pip install -e .[dev]
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
@@ -15,14 +16,18 @@ If you don't use `uv`:
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # (Windows: .venv\Scripts\activate)
-pip install -e .
+pip install -e .[dev]
 uvicorn app.main:app --reload --port 8000
 ```
 
 ## Endpoints
 - `POST /v1/ingest` — load files from `../data/input` and build in-memory indices
-- `POST /v1/retrieve` — simple BM25-ish/keyword retrieval (file-first) 
+- `POST /v1/retrieve` — simple BM25-ish/keyword retrieval (file-first)
 - `POST /v1/translate` — LLM-backed translation with optional guardrails and retrieval context
+
+추가 예정:
+- `/v1/requests`, `/v1/drafts`, `/v1/approvals` 등 워크플로우 API (ORM 기반)
+- `/v1/exports`, `/v1/search` (Day 7~8 계획)
 
 ## Data Layout
 ```
@@ -37,7 +42,18 @@ data/
   logs/
 ```
 
-> NOTE: This is a lab scaffold. Replace retrieval with a real Vector DB later (Qdrant/Chroma).
+> NOTE: This is a lab scaffold. Retrieval은 Day 2에서 Qdrant 설정/컬렉션 스키마를 코드로 정의했으며,
+> 이후 하이브리드 검색 및 rerank 서비스를 연동할 예정이다.
+
+## Database & Vector Store Setup (Day 2 Preview)
+
+- `app/db/models.py`: 요청/초안/버전/승인/Export/Guardrail/Audit 테이블 ORM 정의.
+- `app/db/session.py`: SQLAlchemy 엔진 및 세션 관리. 기본값은 `sqlite:///./ux_writer_lab.db`.
+- 환경 변수
+  - `DATABASE_URL` — e.g. `postgresql+psycopg://user:pass@localhost:5432/ux_writer`.
+  - `QDRANT_HOST`, `QDRANT_PORT`, `QDRANT_API_KEY`.
+  - `EMBEDDING_MODEL`, `EMBEDDING_PRECISION` (기본: `BAAI/bge-m3`, `fp16`).
+- RAG 기본 컬렉션은 `app/services/rag/config.py`에서 선언하며, 스타일 가이드/확정 문구/용어집/컨텍스트 네 가지를 다룬다.
 
 ## Configuration
 

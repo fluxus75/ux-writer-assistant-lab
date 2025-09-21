@@ -84,7 +84,10 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     requests: Mapped[List["Request"]] = relationship(back_populates="requested_by_user", cascade="all, delete-orphan")
-    assigned_requests: Mapped[List["Request"]] = relationship(back_populates="assigned_writer_user", cascade="all, delete-orphan", foreign_keys="Request.assigned_writer_id")
+    assigned_requests: Mapped[List["Request"]] = relationship(
+        back_populates="assigned_writer_user",
+        foreign_keys="Request.assigned_writer_id",
+    )
     drafts: Mapped[List["Draft"]] = relationship(back_populates="created_by_user")
     comments: Mapped[List["Comment"]] = relationship(back_populates="author")
 

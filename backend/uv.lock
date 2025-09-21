@@ -1218,6 +1218,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "qdrant-client" },
     { name = "sqlalchemy" },
+    { name = "trio" },
     { name = "uvicorn" },
 ]
 
@@ -1245,6 +1246,7 @@ requires-dist = [
     { name = "qdrant-client", specifier = ">=1.9.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.5.0" },
     { name = "sqlalchemy", specifier = ">=2.0.30" },
+    { name = "trio", specifier = ">=0.25.0" },
     { name = "trio", marker = "extra == 'dev'", specifier = ">=0.25.0" },
     { name = "uvicorn", specifier = ">=0.30.0" },
 ]

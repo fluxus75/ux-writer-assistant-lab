@@ -1,0 +1,16 @@
+{
+  "text": "배터리가 부족합니다. 청소를 마치고 돌아가 주세요.",
+  "source_language": "ko",
+  "target_language": "en",
+  "context_ids": ["ctx_001", "ctx_005"],
+  "glossary": {
+    "배터리": "battery",
+    "돌아가": "return"
+  },
+  "options": {
+    "tone": "concise.system.action",
+    "use_rag": true,
+    "rag_top_k": 3,
+    "guardrails": true
+  }
+}

@@ -19,6 +19,24 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = Field(default=30.0, alias="LLM_TIMEOUT_SECONDS")
     llm_temperature: float = Field(default=0.3, alias="LLM_TEMPERATURE")
 
+    database_url: str = Field(
+        default="sqlite:///./ux_writer_lab.db",
+        alias="DATABASE_URL",
+        description="SQLAlchemy connection string; defaults to local SQLite for development.",
+    )
+
+    qdrant_host: str = Field(default="localhost", alias="QDRANT_HOST")
+    qdrant_port: int = Field(default=6333, alias="QDRANT_PORT")
+    qdrant_api_key: Optional[str] = Field(default=None, alias="QDRANT_API_KEY")
+
+    embedding_model: str = Field(default="BAAI/bge-m3", alias="EMBEDDING_MODEL")
+    embedding_precision: Literal["fp16", "fp32"] = Field(default="fp16", alias="EMBEDDING_PRECISION")
+    embedding_backend: Literal["stub", "onnx"] = Field(default="stub", alias="EMBEDDING_BACKEND")
+    embedding_onnx_path: Optional[str] = Field(default=None, alias="EMBEDDING_ONNX_PATH")
+    embedding_max_batch: int = Field(default=16, alias="EMBEDDING_MAX_BATCH")
+
+    qdrant_use_grpc: bool = Field(default=False, alias="QDRANT_USE_GRPC")
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

@@ -21,7 +21,7 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 ## Endpoints
-- `POST /v1/ingest` — load files from `../data/input` and build in-memory indices
+- `POST /v1/ingest` — load files from `../data/input`, persist them to Postgres/Qdrant, and refresh in-memory indices
 - `POST /v1/retrieve` — simple BM25-ish/keyword retrieval (file-first)
 - `POST /v1/translate` — LLM-backed translation with optional guardrails and retrieval context
 
@@ -51,8 +51,8 @@ data/
 - `app/db/session.py`: SQLAlchemy 엔진 및 세션 관리. 기본값은 `sqlite:///./ux_writer_lab.db`.
 - 환경 변수
   - `DATABASE_URL` — e.g. `postgresql+psycopg://user:pass@localhost:5432/ux_writer`.
-  - `QDRANT_HOST`, `QDRANT_PORT`, `QDRANT_API_KEY`.
-  - `EMBEDDING_MODEL`, `EMBEDDING_PRECISION` (기본: `BAAI/bge-m3`, `fp16`).
+  - `QDRANT_HOST`, `QDRANT_PORT`, `QDRANT_API_KEY`, `QDRANT_USE_GRPC`.
+  - `EMBEDDING_MODEL`, `EMBEDDING_PRECISION`, `EMBEDDING_BACKEND` (`stub` or `onnx`), `EMBEDDING_ONNX_PATH`.
 - RAG 기본 컬렉션은 `app/services/rag/config.py`에서 선언하며, 스타일 가이드/확정 문구/용어집/컨텍스트 네 가지를 다룬다.
 
 ## Configuration
@@ -71,3 +71,5 @@ Environment variables:
 - `LLM_BASE_URL` — optional custom endpoint (for proxies/self-hosted).
 - `LLM_TIMEOUT_SECONDS` — request timeout.
 - `LLM_TEMPERATURE` — default sampling temperature.
+- `EMBEDDING_BACKEND` — `stub` (default) uses deterministic vectors for tests, `onnx` enables FP16 bge-m3 inference via `onnxruntime`.
+- `EMBEDDING_ONNX_PATH` — absolute path to the exported bge-m3 ONNX model (only when backend is `onnx`).

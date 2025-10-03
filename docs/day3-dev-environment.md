@@ -20,6 +20,9 @@ QDRANT_API_KEY=  # self-host 기본값은 빈 문자열
 # Embedding / RAG
 EMBEDDING_MODEL=BAAI/bge-m3
 EMBEDDING_PRECISION=fp16
+EMBEDDING_BACKEND=stub  # "onnx"로 변경하면 로컬 ONNX 추론을 사용
+EMBEDDING_ONNX_PATH=     # onnx 모드 시 모델 경로 (.onnx)
+EMBEDDING_MAX_BATCH=16
 
 # LLM (Stub 또는 실 API 사용 시 설정)
 LLM_PROVIDER=openai
@@ -114,7 +117,14 @@ docker compose up -d
 | `glossary_terms` | 용어집 엔트리 | 1024 | term, translation, language_pair, device, must_use |
 | `context_snippets` | 컨텍스트/대화 사례 | 1024 | context_id, product_area, locale, tags |
 
-Day 3 구현에서는 임시 임베딩(결정적 해시 기반)을 생성하여 컬렉션에 업서트합니다. 실제 bge-m3 ONNX 추론 파이프라인은 Day 5~6에 교체 예정입니다.
+Day 3 구현에서는 기본적으로 결정적 스텁 임베딩을 사용하지만, `EMBEDDING_BACKEND=onnx`와 `EMBEDDING_ONNX_PATH=/path/to/model.onnx`를 지정하면 즉시 bge-m3 ONNX 추론 경로를 활성화할 수 있습니다. 모델과 `tokenizer.json` 파일은 동일 폴더에 존재해야 하며, ONNX 패키지(`onnxruntime`, `tokenizers`) 의존성은 `uv pip install -e .` 명령으로 설치됩니다.
+
+```bash
+# 예시: huggingface transformers에서 변환된 ONNX 모델 사용 시
+export EMBEDDING_BACKEND=onnx
+export EMBEDDING_ONNX_PATH="$HOME/models/bge-m3/bge-m3.onnx"
+uv run python -c "from app.services.rag.embedding import get_embedding_client; print(len(get_embedding_client().embed(['test'])[0]))"
+```
 
 ## 6. 종료 & 데이터 초기화
 ```bash
@@ -136,4 +146,5 @@ DB/Qdrant가 기동된 이후에는 다음 트랙을 병렬로 진행할 수 있
 - **Backend/API**: SQLAlchemy 세션을 FastAPI 의존성으로 연결하고 `/v1/ingest`가 Postgres/Qdrant에 데이터를 기록하도록 재구현했습니다. 이후 `/v1/requests`, `/v1/drafts` 등 워크플로우 API를 추가합니다.
 - **RAG·데이터/ML**: `default_collections` 기준으로 컬렉션을 초기화하고, 향후 Day 5에 실제 bge-m3 임베딩 파이프라인을 교체하면 됩니다.
 - **Frontend**: Next.js 기반 앱에서 요청 생성/검수 플로우 UI를 실제 API와 연동할 준비를 진행합니다.
+- **Frontend**: Next.js 14 App Router 스캐폴드를 `frontend/` 디렉터리에 추가했습니다. `pnpm dev`로 실행하여 요청 리스트, 워크스페이스, Export 대시보드를 확인할 수 있습니다.
 

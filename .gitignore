@@ -3,6 +3,8 @@ backend/.venv/
 
 # Node dependencies
 fe-test/node_modules/
+frontend/node_modules/
+frontend/.next/
 
 # Environment files
 .env
@@ -20,3 +22,6 @@ fe-test/dist/
 backend/ux_writer_lab.db
 ux_writer_lab.db
 
+# Python caches
+__pycache__/
+backend/**/__pycache__/

@@ -8,6 +8,7 @@ from .config import (
     embedding_config,
     vector_store_config,
 )
+from .embedding import EmbeddingClient, EmbeddingRequest, get_embedding_client
 
 __all__ = [
     "EmbeddingModelConfig",
@@ -16,4 +17,7 @@ __all__ = [
     "default_collections",
     "embedding_config",
     "vector_store_config",
+    "EmbeddingClient",
+    "EmbeddingRequest",
+    "get_embedding_client",
 ]

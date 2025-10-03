@@ -17,6 +17,7 @@ app/services/llm/__init__.py
 app/services/llm/client.py
 app/services/rag/__init__.py
 app/services/rag/config.py
+app/services/rag/embedding.py
 app/services/retrieve/service.py
 app/services/translate/prompting.py
 app/services/translate/service.py

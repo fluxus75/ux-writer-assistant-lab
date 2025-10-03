@@ -31,6 +31,11 @@ class Settings(BaseSettings):
 
     embedding_model: str = Field(default="BAAI/bge-m3", alias="EMBEDDING_MODEL")
     embedding_precision: Literal["fp16", "fp32"] = Field(default="fp16", alias="EMBEDDING_PRECISION")
+    embedding_backend: Literal["stub", "onnx"] = Field(default="stub", alias="EMBEDDING_BACKEND")
+    embedding_onnx_path: Optional[str] = Field(default=None, alias="EMBEDDING_ONNX_PATH")
+    embedding_max_batch: int = Field(default=16, alias="EMBEDDING_MAX_BATCH")
+
+    qdrant_use_grpc: bool = Field(default=False, alias="QDRANT_USE_GRPC")
 
 
 @lru_cache(maxsize=1)

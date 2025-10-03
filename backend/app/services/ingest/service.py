@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import os
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 from uuid import uuid4
 
 from qdrant_client import QdrantClient
@@ -14,22 +13,13 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.core import io_utils, state
+from app.core.settings import settings
 from app.db import models
-from app.services.rag.config import default_collections, embedding_config, vector_store_config
+from app.services.rag.config import default_collections, vector_store_config
+from app.services.rag.embedding import get_embedding_client
 
 DATA_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..", "data"))
 logger = logging.getLogger(__name__)
-
-
-def _pseudo_embedding(text: str, dimension: int) -> List[float]:
-    """Return a deterministic pseudo-embedding for the provided text."""
-
-    if not text:
-        return [0.0] * dimension
-    digest = hashlib.sha256(text.encode("utf-8")).digest()
-    base_values = [byte / 255.0 for byte in digest]
-    size = len(base_values)
-    return [base_values[i % size] for i in range(dimension)]
 
 
 def _ensure_collections(client: QdrantClient) -> None:
@@ -59,8 +49,25 @@ def _upsert_vectors(
     return len(points_list)
 
 
-def _collect_style_vectors(style_rows: List[Dict[str, Any]]) -> List[qmodels.PointStruct]:
+def _batch_embed(
+    text_payload_pairs: Sequence[Tuple[str, Dict[str, Any]]],
+) -> List[qmodels.PointStruct]:
+    if not text_payload_pairs:
+        return []
+
+    client = get_embedding_client()
+    batch_size = max(1, getattr(settings, "embedding_max_batch", 16))
     points: List[qmodels.PointStruct] = []
+    for start in range(0, len(text_payload_pairs), batch_size):
+        batch = text_payload_pairs[start : start + batch_size]
+        vectors = client.embed([text for text, _ in batch])
+        for vector, (_, payload) in zip(vectors, batch):
+            points.append(qmodels.PointStruct(id=str(uuid4()), vector=vector, payload=payload))
+    return points
+
+
+def _collect_style_vectors(style_rows: List[Dict[str, Any]]) -> List[qmodels.PointStruct]:
+    items: List[Tuple[str, Dict[str, Any]]] = []
     for row in style_rows:
         text = str(row.get("en_line", "")).strip()
         if not text:
@@ -73,15 +80,12 @@ def _collect_style_vectors(style_rows: List[Dict[str, Any]]) -> List[qmodels.Poi
             "style_tag": row.get("style_tag"),
             "notes": row.get("notes"),
         }
-        vector = _pseudo_embedding(text, embedding_config.dimension)
-        points.append(
-            qmodels.PointStruct(id=str(uuid4()), vector=vector, payload=payload)
-        )
-    return points
+        items.append((text, payload))
+    return _batch_embed(items)
 
 
 def _collect_context_vectors(context_rows: List[Dict[str, Any]]) -> List[qmodels.PointStruct]:
-    points: List[qmodels.PointStruct] = []
+    items: List[Tuple[str, Dict[str, Any]]] = []
     for row in context_rows:
         text = str(row.get("ko_response") or row.get("en_line") or "").strip()
         if not text:
@@ -93,15 +97,12 @@ def _collect_context_vectors(context_rows: List[Dict[str, Any]]) -> List[qmodels
             "style_tag": row.get("style_tag"),
             "tags": row.get("response_case_tags", []),
         }
-        vector = _pseudo_embedding(text, embedding_config.dimension)
-        points.append(
-            qmodels.PointStruct(id=str(uuid4()), vector=vector, payload=payload)
-        )
-    return points
+        items.append((text, payload))
+    return _batch_embed(items)
 
 
 def _collect_glossary_vectors(glossary_rows: List[Dict[str, Any]]) -> List[qmodels.PointStruct]:
-    points: List[qmodels.PointStruct] = []
+    items: List[Tuple[str, Dict[str, Any]]] = []
     for row in glossary_rows:
         text = str(row.get("en_term") or row.get("ko_term") or "").strip()
         if not text:
@@ -113,11 +114,8 @@ def _collect_glossary_vectors(glossary_rows: List[Dict[str, Any]]) -> List[qmode
             "device": row.get("device"),
             "must_use": str(row.get("must_use", "")).lower() in {"true", "1", "yes"},
         }
-        vector = _pseudo_embedding(text, embedding_config.dimension)
-        points.append(
-            qmodels.PointStruct(id=str(uuid4()), vector=vector, payload=payload)
-        )
-    return points
+        items.append((text, payload))
+    return _batch_embed(items)
 
 
 def do_ingest(session: Session, vector_client: Optional[QdrantClient] = None) -> Dict[str, Any]:

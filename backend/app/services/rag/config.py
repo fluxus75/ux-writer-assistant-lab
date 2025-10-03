@@ -51,6 +51,7 @@ vector_store_config = VectorStoreConfig(
     host=settings.qdrant_host,
     port=settings.qdrant_port,
     api_key=settings.qdrant_api_key,
+    prefer_grpc=settings.qdrant_use_grpc,
 )
 
 

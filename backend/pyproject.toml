@@ -16,6 +16,9 @@ dependencies = [
     "alembic>=1.13.1",
     "qdrant-client>=1.9.1",
     "trio>=0.25.0",
+    "numpy>=1.26.0",
+    "onnxruntime>=1.17.0",
+    "tokenizers>=0.15.2",
 ]
 
 [project.optional-dependencies]

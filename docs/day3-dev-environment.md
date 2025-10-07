@@ -49,7 +49,7 @@ services:
       - ./dev-data/postgres:/var/lib/postgresql/data
 
   qdrant:
-    image: qdrant/qdrant:v1.8.2
+    image: qdrant/qdrant:v1.15.1
     restart: unless-stopped
     environment:
       QDRANT__STORAGE__CACHE_SIZE: 1024

@@ -1,8 +1,9 @@
 {
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
-      "Bash(claude mcp get:*)"
-    ]
+      "Bash(claude mcp get:*)",
+      "Bash(uv run alembic revision:*)"
+    ],
+    "defaultMode": "acceptEdits"
   }
 }

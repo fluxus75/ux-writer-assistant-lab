@@ -1,9 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import ingest, retrieve, translate
+
+from app.api.v1 import approvals, drafts, ingest, requests, retrieve, translate
+from app.core.auth import RoleMiddleware
 
 app = FastAPI(title="UX Writer Assistant Backend (Lab)", version="0.1.0")
 
+app.add_middleware(RoleMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,6 +18,9 @@ app.add_middleware(
 app.include_router(ingest.router, prefix="/v1")
 app.include_router(retrieve.router, prefix="/v1")
 app.include_router(translate.router, prefix="/v1")
+app.include_router(requests.router, prefix="/v1")
+app.include_router(drafts.router, prefix="/v1")
+app.include_router(approvals.router, prefix="/v1")
 
 @app.get("/health")
 def health():

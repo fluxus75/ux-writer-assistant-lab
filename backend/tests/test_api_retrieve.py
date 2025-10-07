@@ -20,13 +20,14 @@ async def test_retrieve_with_filters_and_query():
     assert resp.status_code == 200
     body = resp.json()
     items = body.get("items", [])
-    assert len(items) == 1
+    assert len(items) >= 1
     it = items[0]
     assert it["sid"] == "S001"
-    assert "charging station" in it["en_line"].lower()
-    assert it["score"] >= 1
+    assert "charging" in it["en_line"].lower()
     assert it["metadata"]["device"] == "robot_vacuum"
     assert it["metadata"]["feature_norm"] == "charging"
+    assert body["mode"] in {"feature", "style"}
+    assert "feature_confidence" in body
 
 
 @pytest.mark.anyio

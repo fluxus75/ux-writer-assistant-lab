@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from app.core import state
 from app.core.settings import settings
@@ -12,6 +13,8 @@ from app.services.guardrails.service import apply_guardrails
 from app.services.llm import get_llm_client
 from app.services.llm.client import LLMClientError
 from app.services.retrieve.service import retrieve
+
+from app.db import models
 
 from .prompting import TranslationPromptParams, build_prompt
 
@@ -24,6 +27,10 @@ class TranslateOptions(BaseModel):
     guardrails: bool = True
     temperature: Optional[float] = None
     max_output_tokens: Optional[int] = None
+    num_candidates: int = 1
+    device: Optional[str] = None
+    feature_norm: Optional[str] = None
+    style_tag: Optional[str] = None
 
 
 class TranslateRequest(BaseModel):
@@ -39,6 +46,7 @@ class TranslateRequest(BaseModel):
 
 class TranslationCandidate(BaseModel):
     text: str
+    guardrail: Optional[Dict[str, Any]] = None
 
 
 class TranslateResponse(BaseModel):
@@ -74,13 +82,37 @@ def _context_examples(ids: List[str]) -> List[str]:
     return examples
 
 
-def translate(request: TranslateRequest) -> TranslateResponse:
+def translate(
+    request: TranslateRequest,
+    *,
+    session: Session | None = None,
+    request_context: models.Request | None = None,
+) -> TranslateResponse:
     options = request.options
 
-    retrieval_debug = {"items": [], "latency_ms": 0}
+    retrieval_debug: Dict[str, Any] = {"items": [], "latency_ms": 0, "mode": None, "feature_confidence": 0.0, "novelty_mode": False}
     retrieval_examples: List[str] = []
     if options.use_rag:
-        retrieval_debug = retrieve(query=request.text, filters={}, topK=max(1, options.rag_top_k))
+        rag_filters: Dict[str, Any] = {}
+        if options.device:
+            rag_filters["device"] = options.device
+        if options.feature_norm:
+            rag_filters["feature_norm"] = options.feature_norm
+        if options.style_tag:
+            rag_filters["style_tag"] = options.style_tag
+        if not rag_filters and request_context and request_context.constraints_json:
+            constraints = request_context.constraints_json or {}
+            for key in ("device", "feature_norm", "style_tag"):
+                value = constraints.get(key)
+                if value:
+                    rag_filters[key] = value
+        if session is not None:
+            retrieval_debug = retrieve(
+                session,
+                query=request.text,
+                filters=rag_filters,
+                top_k=max(1, options.rag_top_k),
+            )
         retrieval_examples = [item.get("en_line", "") for item in retrieval_debug.get("items", []) if item.get("en_line")]
 
     # Include explicit context examples even when RAG is disabled.
@@ -106,22 +138,40 @@ def translate(request: TranslateRequest) -> TranslateResponse:
     except LLMClientError as exc:  # pragma: no cover - network error path exercised via tests mocks
         raise TranslationServiceError(str(exc)) from exc
 
-    candidate_text = llm_result.text.strip()
-    if not candidate_text:
-        candidate_text = request.text.strip()
+    base_text = llm_result.text.strip() or request.text.strip()
+    num_candidates = max(1, min(options.num_candidates, 5))
+    candidate_texts: List[str] = []
+    for idx in range(num_candidates):
+        if idx == 0:
+            candidate_texts.append(base_text)
+        elif idx == 1 and base_text.endswith("."):
+            candidate_texts.append(base_text)
+        else:
+            candidate_texts.append(base_text)
 
-    candidates = [TranslationCandidate(text=candidate_text)]
-
-    guardrail_result = {
-        "passes": True,
-        "violations": [],
-        "fixed": candidate_text,
-    }
-    if options.guardrails:
-        rules = _collect_rules(request.run_id)
-        guardrail_result = apply_guardrails(candidate_text, rules, request.hints)
-
-    selected = guardrail_result.get("fixed", candidate_text)
+    rules = _collect_rules(request.run_id) if options.guardrails else {}
+    candidates: List[TranslationCandidate] = []
+    selected = base_text
+    selected_guardrail = None
+    for text in candidate_texts:
+        guardrail_result = None
+        if options.guardrails:
+            guardrail_result = apply_guardrails(text, rules, request.hints)
+            fixed = guardrail_result.get("fixed", text)
+        else:
+            fixed = text
+        candidate_model = TranslationCandidate(text=fixed, guardrail=guardrail_result)
+        candidates.append(candidate_model)
+        if options.guardrails:
+            passes = guardrail_result.get("passes", True) if guardrail_result else True
+            if passes and selected_guardrail is None:
+                selected = fixed
+                selected_guardrail = guardrail_result
+        else:
+            selected = fixed
+    if selected_guardrail is None and candidates:
+        selected = candidates[0].text
+        selected_guardrail = candidates[0].guardrail
 
     metadata = {
         "llm": {
@@ -129,7 +179,8 @@ def translate(request: TranslateRequest) -> TranslateResponse:
             "model": settings.llm_model,
         },
         "retrieval": retrieval_debug,
-        "guardrails": guardrail_result,
+        "guardrails": selected_guardrail,
+        "novelty_mode": retrieval_debug.get("novelty_mode", False),
     }
 
     return TranslateResponse(

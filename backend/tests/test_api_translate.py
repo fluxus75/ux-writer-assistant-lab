@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
@@ -43,6 +44,8 @@ async def test_translate_llm_with_guardrails(stub_llm: _StubLLM) -> None:
     assert body["selected"].startswith("Returning")
     assert body["metadata"]["llm"]["model"]
     assert isinstance(body["metadata"]["retrieval"]["items"], list)
+    assert body["metadata"].get("novelty_mode") in {True, False}
+    assert body["candidates"][0]["guardrail"] is None or isinstance(body["candidates"][0]["guardrail"], dict)
     # Ensure prompt captured the request languages
     assert stub_llm.last_prompt is not None
     prompt_text = "\n".join(msg.content for msg in stub_llm.last_prompt.messages)
@@ -71,6 +74,7 @@ async def test_translate_applies_guardrail_replacements() -> None:
     body = resp.json()
     assert body["selected"].startswith("Come back to")
     guardrails = body["metadata"]["guardrails"]
+    assert guardrails is not None
     assert guardrails["passes"] is False
     assert any(v for v in guardrails["violations"] if v.startswith("length"))
 
@@ -92,5 +96,4 @@ async def test_translate_without_guardrails() -> None:
     assert resp.status_code == 200
     body = resp.json()
     assert body["selected"] == "Returning to charging station."
-    guardrails = body["metadata"]["guardrails"]
-    assert guardrails["passes"] is True
+    assert body["metadata"]["guardrails"] is None

@@ -9,7 +9,8 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from app.db import models
-from app.services.translate.service import TranslateRequest, TranslateOptions, translate
+from app.services.audit.service import record_audit_event
+from app.services.translate.service import TranslateOptions, TranslateRequest, translate
 
 
 @dataclass
@@ -98,6 +99,18 @@ def generate_ai_draft(
     session.flush()
     draft.versions = versions
     session.refresh(draft)
+    record_audit_event(
+        session,
+        entity_type="draft",
+        entity_id=draft.id,
+        action="generated",
+        payload={
+            "request_id": request.id,
+            "candidate_count": len(versions),
+            "novelty_mode": metadata_base.get("novelty_mode"),
+        },
+        actor_id=created_by.id,
+    )
     return draft
 
 

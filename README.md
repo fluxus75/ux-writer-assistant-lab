@@ -20,12 +20,13 @@ curl http://localhost:8000/health
 >
 > Alembic migrations live in `backend/alembic/`. Run `uv run alembic upgrade head` after changing ORM models.
 
-Key workflow endpoints (Day 5):
+Key workflow endpoints (Day 6):
 
 - `POST /v1/requests` — create a UX copy request (requires `X-User-Role: designer`).
 - `GET /v1/requests` — list requests (designer/writer/admin roles).
 - `POST /v1/drafts` — generate AI drafts and persist versions (writer/designer roles).
 - `POST /v1/approvals` — approve or reject a request (designer/admin).
+- `POST /v1/comments` / `POST /v1/comments/{id}/resolve` — collaboration notes with audit logging.
 
 ## 2) Test Frontend (Vite + React + TS)
 ```bash
@@ -56,5 +57,6 @@ Environment variables for the Next.js shell:
 3. **Translate**: FE → Translate page → set `ids`, toggles (RAG/RULES), `length_max` → **Translate**
 
 ## Notes
-- This is a **lab scaffold**. Retrieval now routes between feature-mode and style-prior using Postgres/Qdrant with bge-m3 embeddings.
-- Guardrails currently enforce length/forbidden/replacements. Day 6+ will expand tone/person checks.
+- This is a **lab scaffold**. Retrieval now routes between feature-mode and style-prior using Postgres/Qdrant with bge-m3 embeddings, diversity filtering, and style-aware reranking.
+- Guardrails enforce length, forbidden/replace maps, and style rules (person, punctuation, casing, word count) merged from YAML and DB scopes.
+- See `docs/testing/frontend-e2e-guide.md` for Next.js end-to-end exercises and `docs/models/bge-m3-onnx-export.md` for the ONNX export pipeline.

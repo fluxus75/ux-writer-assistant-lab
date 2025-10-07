@@ -48,9 +48,16 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 ## Endpoints
-- `POST /v1/ingest` — load files from `../data/input`, persist them to Postgres/Qdrant, and refresh in-memory indices
-- `POST /v1/retrieve` — simple BM25-ish/keyword retrieval (file-first)
-- `POST /v1/translate` — LLM-backed translation with optional guardrails and retrieval context
+- `POST /v1/ingest` — load files from `../data/input`, persist them to Postgres/Qdrant, and refresh caches.
+- `POST /v1/retrieve` — hybrid retrieval (feature-mode + style-prior) backed by Postgres metadata + Qdrant vectors.
+- `POST /v1/translate` — LLM-backed translation with optional guardrails, multi-candidate support, and retrieval context.
+- `POST /v1/requests` — create UX copy requests (RBAC via `X-User-Role`).
+- `GET /v1/requests` / `GET /v1/requests/{id}` — list or inspect requests.
+- `POST /v1/drafts` — generate AI drafts and persist draft versions with guardrail metadata.
+- `POST /v1/approvals` — capture approval/rejection decisions and update request status.
+
+예정:
+- `/v1/exports`, `/v1/search` (Day 7~8 계획)
 
 추가 예정:
 - `/v1/requests`, `/v1/drafts`, `/v1/approvals` 등 워크플로우 API (ORM 기반)
@@ -72,10 +79,11 @@ data/
 > NOTE: This is a lab scaffold. Retrieval은 Day 2에서 Qdrant 설정/컬렉션 스키마를 코드로 정의했으며,
 > 이후 하이브리드 검색 및 rerank 서비스를 연동할 예정이다.
 
-## Database & Vector Store Setup (Day 2 Preview)
+## Database & Vector Store Setup
 
 - `app/db/models.py`: 요청/초안/버전/승인/Export/Guardrail/Audit 테이블 ORM 정의.
 - `app/db/session.py`: SQLAlchemy 엔진 및 세션 관리. 기본값은 `sqlite:///./ux_writer_lab.db`.
+- `alembic/`: 초기 마이그레이션(`alembic upgrade head`) 및 추후 변경 사항 관리.
 - 환경 변수
   - `DATABASE_URL` — e.g. `postgresql+psycopg://user:pass@localhost:5432/ux_writer`.
   - `QDRANT_HOST`, `QDRANT_PORT`, `QDRANT_API_KEY`, `QDRANT_USE_GRPC`.

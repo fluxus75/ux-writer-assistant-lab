@@ -12,7 +12,7 @@ async def test_retrieve_with_filters_and_query():
 
         payload = {
             "query": "charging station",
-            "filters": {"device": "robot_vacuum", "feature_norm": "charging"},
+            "filters": {"device": "robot_vacuum", "feature_norm": "charging", "style_tag": "concise.system.action"},
             "topK": 3,
         }
         resp = await client.post("/v1/retrieve", json=payload)
@@ -21,13 +21,12 @@ async def test_retrieve_with_filters_and_query():
     body = resp.json()
     items = body.get("items", [])
     assert len(items) >= 1
-    it = items[0]
-    assert it["sid"] == "S001"
-    assert "charging" in it["en_line"].lower()
-    assert it["metadata"]["device"] == "robot_vacuum"
-    assert it["metadata"]["feature_norm"] == "charging"
+    assert any("charging" in entry["en_line"].lower() for entry in items)
+    for item in items:
+        assert item["metadata"]["device"] == "robot_vacuum"
     assert body["mode"] in {"feature", "style"}
     assert "feature_confidence" in body
+    assert body.get("candidate_count") == len(items)
 
 
 @pytest.mark.anyio

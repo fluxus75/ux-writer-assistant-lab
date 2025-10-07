@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import models
+from app.services.audit.service import record_audit_event
 
 
 def create_request(
@@ -43,6 +44,18 @@ def create_request(
     session.add(request)
     session.flush()
     session.refresh(request)
+    record_audit_event(
+        session,
+        entity_type="request",
+        entity_id=request.id,
+        action="created",
+        payload={
+            "feature_name": feature_name,
+            "tone": tone,
+            "constraints": constraints or {},
+        },
+        actor_id=requested_by.id,
+    )
     return request
 
 

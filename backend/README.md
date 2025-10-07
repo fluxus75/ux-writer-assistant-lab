@@ -32,10 +32,6 @@ uvicorn app.main:app --reload --port 8000
 예정:
 - `/v1/exports`, `/v1/search` (Day 7~8 계획)
 
-추가 예정:
-- `/v1/requests`, `/v1/drafts`, `/v1/approvals` 등 워크플로우 API (ORM 기반)
-- `/v1/exports`, `/v1/search` (Day 7~8 계획)
-
 ## Data Layout
 ```
 data/

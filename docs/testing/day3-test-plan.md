@@ -42,6 +42,7 @@ The script performs:
 2. `/v1/ingest` to load `data/input` into Postgres and Qdrant.
 3. `/v1/retrieve` sample query (`dock`).
 4. `/v1/translate` call using `docs/testing/sample_payloads/translate-basic.json` (guarded behind LLM availability).
+5. **Optional workflow flow** (set `WORKFLOW_SMOKE=1` and export `DESIGNER_ID`, `WRITER_ID`, optionally `ADMIN_ID`). When enabled the script chains `/v1/requests`, `/v1/drafts`, `/v1/approvals`, and `/v1/comments`, persisting artifacts such as `request.json` and `comment.json` in the run directory.
 Results are written to `tmp/test-run/<timestamp>/` so responses can be inspected later.
 
 ## 5. Database Validation Steps
@@ -80,7 +81,8 @@ The counts should align with the Postgres totals when EMBEDDING_BACKEND=stub (no
 ## 7. Manual API Scenarios
 Use the sample payloads under `docs/testing/sample_payloads/` with `curl` or the VS Code REST client:
 - `translate-basic.json` — default guardrails off to avoid LLM requirements.
-- `translate-rag.json` (optional) — enables RAG (`use_rag=true`) and expects ingest to have run first.
+- `translate-rag.json` — enables RAG (`use_rag=true`) and expects ingest to have run first.
+- `request-create.json`, `draft-generate.json`, `approval-decision.json`, `comment-create.json` — power the end-to-end workflow smoke (update `assigned_writer_id` and `request_id` fields as needed).
 
 Examples:
 ```bash

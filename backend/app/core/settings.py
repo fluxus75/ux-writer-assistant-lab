@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     embedding_max_batch: int = Field(default=16, alias="EMBEDDING_MAX_BATCH")
 
     qdrant_use_grpc: bool = Field(default=False, alias="QDRANT_USE_GRPC")
+    qdrant_use_https: bool = Field(default=False, alias="QDRANT_USE_HTTPS")
 
 
 @lru_cache(maxsize=1)

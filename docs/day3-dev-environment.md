@@ -49,7 +49,7 @@ services:
       - ./dev-data/postgres:/var/lib/postgresql/data
 
   qdrant:
-    image: qdrant/qdrant:v1.8.2
+    image: qdrant/qdrant:v1.15.1
     restart: unless-stopped
     environment:
       QDRANT__STORAGE__CACHE_SIZE: 1024
@@ -92,7 +92,7 @@ docker compose up -d
 
 3. **Alembic 마이그레이션 준비**
    - Alembic 초기화: `uv run alembic init migrations`
-   - `env.py`에서 `app.db.session.Base.metadata`를 참조하도록 수정
+   - `env.py`에서 `app.db.session.Base.metadata`를 참조하도록 수정aa
    - 초기 마이그레이션: `uv run alembic revision --autogenerate -m "init"`
    - 적용: `uv run alembic upgrade head`
 

@@ -12,7 +12,6 @@ Requires-Dist: python-multipart>=0.0.9
 Requires-Dist: pyyaml>=6.0
 Requires-Dist: openai>=1.30.0
 Requires-Dist: sqlalchemy>=2.0.30
-Requires-Dist: psycopg[binary]>=3.1.0
 Requires-Dist: alembic>=1.13.1
 Requires-Dist: qdrant-client>=1.9.1
 Requires-Dist: trio>=0.25.0

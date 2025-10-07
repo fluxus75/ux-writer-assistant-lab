@@ -1,30 +1,41 @@
 import Link from "next/link";
 
+type RequestRow = {
+  id: string;
+  title: string;
+  feature_name: string;
+  status: string;
+  assigned_writer_id: string | null;
+  created_at: string;
+};
+
 const columns = [
   { key: "title", label: "Title" },
-  { key: "feature", label: "Feature" },
+  { key: "feature_name", label: "Feature" },
   { key: "status", label: "Status" },
-  { key: "writer", label: "Writer" }
+  { key: "assigned_writer_id", label: "Writer" }
 ];
 
-const mockRows = [
-  {
-    id: "REQ-2401",
-    title: "Robot vacuum return flow",
-    feature: "Docking",
-    status: "In Review",
-    writer: "Minseo",
-  },
-  {
-    id: "REQ-2402",
-    title: "Washer rinse confirmation",
-    feature: "Cleaning",
-    status: "Drafting",
-    writer: "In Progress",
-  },
-];
+async function fetchRequests(): Promise<RequestRow[]> {
+  const base = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+  const role = process.env.NEXT_PUBLIC_API_ROLE ?? "designer";
+  const userId = process.env.NEXT_PUBLIC_API_USER_ID ?? "designer-1";
+  const res = await fetch(`${base}/v1/requests`, {
+    headers: {
+      "X-User-Role": role,
+      "X-User-Id": userId,
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to load requests (${res.status})`);
+  }
+  const data = await res.json();
+  return (data.items ?? []) as RequestRow[];
+}
 
-export default function RequestsPage() {
+export default async function RequestsPage() {
+  const rows = await fetchRequests();
   return (
     <section className="space-y-6">
       <header className="flex items-center justify-between">
@@ -51,20 +62,20 @@ export default function RequestsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {mockRows.map((row) => (
+            {rows.map((row) => (
               <tr key={row.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3">
                   <Link href={`/requests/${row.id}`} className="text-primary-600">
                     {row.title}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{row.feature}</td>
+                <td className="px-4 py-3 text-slate-600">{row.feature_name}</td>
                 <td className="px-4 py-3">
                   <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-600">
                     {row.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{row.writer}</td>
+                <td className="px-4 py-3 text-slate-600">{row.assigned_writer_id ?? "Unassigned"}</td>
               </tr>
             ))}
           </tbody>

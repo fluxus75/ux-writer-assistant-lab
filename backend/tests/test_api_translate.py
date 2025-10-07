@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import pytest
+import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.db import models, session_scope
 from app.main import app
 from app.services import llm as llm_registry
 from app.services.llm.client import LLMResult, PromptRequest
@@ -43,6 +45,8 @@ async def test_translate_llm_with_guardrails(stub_llm: _StubLLM) -> None:
     assert body["selected"].startswith("Returning")
     assert body["metadata"]["llm"]["model"]
     assert isinstance(body["metadata"]["retrieval"]["items"], list)
+    assert body["metadata"].get("novelty_mode") in {True, False}
+    assert body["candidates"][0]["guardrail"] is None or isinstance(body["candidates"][0]["guardrail"], dict)
     # Ensure prompt captured the request languages
     assert stub_llm.last_prompt is not None
     prompt_text = "\n".join(msg.content for msg in stub_llm.last_prompt.messages)
@@ -71,6 +75,7 @@ async def test_translate_applies_guardrail_replacements() -> None:
     body = resp.json()
     assert body["selected"].startswith("Come back to")
     guardrails = body["metadata"]["guardrails"]
+    assert guardrails is not None
     assert guardrails["passes"] is False
     assert any(v for v in guardrails["violations"] if v.startswith("length"))
 
@@ -92,5 +97,48 @@ async def test_translate_without_guardrails() -> None:
     assert resp.status_code == 200
     body = resp.json()
     assert body["selected"] == "Returning to charging station."
-    guardrails = body["metadata"]["guardrails"]
-    assert guardrails["passes"] is True
+    assert body["metadata"]["guardrails"] is None
+
+
+@pytest.mark.anyio
+async def test_translate_uses_db_style_rules(stub_llm: _StubLLM) -> None:
+    with session_scope() as session:
+        session.merge(
+            models.User(
+                id="designer-1",
+                role=models.UserRole.DESIGNER,
+                name="Designer",
+                email="designer@example.com",
+            )
+        )
+        session.add(
+            models.GuardrailRule(
+                id="gr-1",
+                scope=models.GuardrailScope.GLOBAL,
+                rule_type=models.GuardrailRuleType.STYLE,
+                payload_json={"person": "impersonal", "punctuation": "period"},
+                created_by="designer-1",
+            )
+            )
+
+    stub_llm.text = "I will return now!"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        await client.post("/v1/ingest")
+        payload = {
+            "text": "내가 돌아갈게",
+            "source_language": "ko",
+            "target_language": "en",
+            "options": {"use_rag": False, "guardrails": True},
+        }
+        resp = await client.post("/v1/translate", json=payload)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    guardrail = body["metadata"]["guardrails"]
+    assert guardrail is not None
+    assert guardrail["passes"] is False
+    assert any("person:impersonal" in violation for violation in guardrail["violations"])
+    assert any("punctuation:period" in violation for violation in guardrail["violations"])
+    assert body["selected"] == "I will return now!"

@@ -13,6 +13,7 @@ dependencies = [
     "pyyaml>=6.0",
     "openai>=1.30.0",
     "sqlalchemy>=2.0.30",
+    "psycopg[binary]>=3.1.0",
     "alembic>=1.13.1",
     "qdrant-client>=1.9.1",
     "trio>=0.25.0",
@@ -32,3 +33,7 @@ dev = [
 
 [tool.uv]
 # Using default PyPI index; no custom index-url.
+
+[tool.setuptools.packages.find]
+include = ['app*']
+exclude = ['migrations', 'migrations.*']

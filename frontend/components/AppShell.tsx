@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "classnames";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+import { RoleProvider, useRole } from "./role-context";
 
 const NAV_LINKS = [
   { href: "/", label: "Overview" },
@@ -13,7 +17,28 @@ const NAV_LINKS = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient());
+
+  return (
+    <RoleProvider>
+      <QueryClientProvider client={queryClient}>
+        <AppShellInner>{children}</AppShellInner>
+      </QueryClientProvider>
+    </RoleProvider>
+  );
+}
+
+function AppShellInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { role, userId, toggleRole } = useRole();
+
+  const roleDisplay = useMemo(() => {
+    if (!role) {
+      return "Unknown";
+    }
+    return `${role.charAt(0).toUpperCase()}${role.slice(1)}`;
+  }, [role]);
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b bg-white">
@@ -25,8 +50,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="text-sm text-slate-500">Day 3 workspace shell</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">Designer</span>
-            <button className="rounded-md border border-slate-200 px-3 py-1 text-slate-600 hover:bg-slate-100">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+              {roleDisplay} · {userId}
+            </span>
+            <button
+              type="button"
+              onClick={toggleRole}
+              className="rounded-md border border-slate-200 px-3 py-1 text-slate-600 transition-colors hover:bg-slate-100"
+            >
               Switch Role
             </button>
           </div>

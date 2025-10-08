@@ -5,6 +5,7 @@ backend/.venv/
 fe-test/node_modules/
 frontend/node_modules/
 frontend/.next/
+frontend/tsconfig.tsbuildinfo
 
 # Environment files
 .env

@@ -1,0 +1,9 @@
+{
+  "request_id": "REQ_PLACEHOLDER",
+  "text": "로봇이 충전 거점으로 돌아갑니다.",
+  "source_language": "ko",
+  "target_language": "en",
+  "num_candidates": 3,
+  "use_rag": true,
+  "temperature": 0.2
+}

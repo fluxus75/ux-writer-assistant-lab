@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
@@ -17,6 +17,8 @@ from app.services.rag.embedding import get_embedding_client
 
 
 FUSION_ALPHA = 0.3
+STYLE_MMR_LAMBDA = 0.5
+STYLE_RERANK_WEIGHT = 0.65
 
 
 def _keyword_score(text: str, query: str) -> float:
@@ -51,12 +53,14 @@ def _vector_search(
     client: QdrantClient,
     *,
     collection: str,
-    vector: List[float],
+    vector: Sequence[float],
     top_k: int,
     filters: Optional[Dict[str, Any]] = None,
-) -> Dict[str, float]:
+    with_vectors: bool = False,
+) -> List[Tuple[str, float, Optional[List[float]], Dict[str, Any]]]:
     if not vector:
-        return {}
+        return []
+
     search_filter = None
     if filters:
         must: List[qmodels.FieldCondition] = []
@@ -66,23 +70,97 @@ def _vector_search(
             must.append(qmodels.FieldCondition(key=key, match=qmodels.MatchValue(value=value)))
         if must:
             search_filter = qmodels.Filter(must=must)
+
     try:
         result = client.search(
             collection_name=collection,
-            query_vector=vector,
+            query_vector=list(vector),
             limit=top_k,
             with_payload=True,
+            with_vectors=with_vectors,
             query_filter=search_filter,
         )
     except Exception:
-        return {}
-    scores: Dict[str, float] = {}
+        return []
+
+    records: List[Tuple[str, float, Optional[List[float]], Dict[str, Any]]] = []
     for item in result:
         payload = item.payload or {}
         sid = payload.get("sid") or payload.get("id")
-        if sid:
-            scores[str(sid)] = float(item.score or 0.0)
-    return scores
+        if not sid:
+            continue
+        vector_payload = None
+        if with_vectors:
+            raw_vector = getattr(item, "vector", None)
+            if isinstance(raw_vector, (list, tuple)):
+                vector_payload = list(raw_vector)
+        records.append((str(sid), float(item.score or 0.0), vector_payload, payload))
+    return records
+
+
+def _normalize_list(values: Iterable[Tuple[str, float]]) -> Dict[str, float]:
+    return _normalize({key: score for key, score in values})
+
+
+def _style_rule_score(entry: models.StyleGuideEntry, filters: Dict[str, Any]) -> float:
+    score = 0.2
+    if filters.get("style_tag") and entry.style_tag == filters["style_tag"]:
+        score += 0.3
+    if filters.get("device") and entry.device == filters["device"]:
+        score += 0.2
+    if filters.get("tone") and entry.tone and entry.tone == filters["tone"]:
+        score += 0.1
+    if filters.get("feature_norm") and entry.feature_norm == filters["feature_norm"]:
+        score += 0.1
+    return score
+
+
+def _mmr(
+    candidates: List[Tuple[str, float, Optional[List[float]], Dict[str, Any]]],
+    *,
+    top_k: int,
+    diversity_lambda: float = STYLE_MMR_LAMBDA,
+) -> List[Tuple[str, float, Optional[List[float]], Dict[str, Any]]]:
+    if not candidates:
+        return []
+    selected: List[Tuple[str, float, Optional[List[float]], Dict[str, Any]]] = []
+    remaining = candidates.copy()
+    while remaining and len(selected) < top_k:
+        if not selected:
+            selected.append(remaining.pop(0))
+            continue
+        best_idx = 0
+        best_score = float("-inf")
+        for idx, candidate in enumerate(remaining):
+            _, cand_score, cand_vec, _ = candidate
+            relevance = cand_score
+            diversity = 0.0
+            if cand_vec:
+                for _, _, selected_vec, _ in selected:
+                    if selected_vec:
+                        diversity = max(
+                            diversity,
+                            _cosine_similarity(cand_vec, selected_vec),
+                        )
+            mmr_score = diversity_lambda * relevance - (1 - diversity_lambda) * diversity
+            if mmr_score > best_score:
+                best_score = mmr_score
+                best_idx = idx
+        selected.append(remaining.pop(best_idx))
+    return selected
+
+
+def _cosine_similarity(vec_a: Sequence[float], vec_b: Sequence[float]) -> float:
+    if not vec_a or not vec_b:
+        return 0.0
+    if len(vec_a) != len(vec_b):
+        return 0.0
+    dot = sum(a * b for a, b in zip(vec_a, vec_b))
+    norm_a = math.sqrt(sum(a * a for a in vec_a))
+    norm_b = math.sqrt(sum(b * b for b in vec_b))
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
 
 
 def _base_style_query(session: Session, filters: Dict[str, Any]) -> List[models.StyleGuideEntry]:
@@ -120,7 +198,7 @@ def retrieve(
         mode = "feature" if feature_conf >= 0.6 else "style"
 
     entries = _base_style_query(session, normalized_filters)
-
+    
     if mode == "feature" and not entries:
         mode = "style"
 
@@ -135,17 +213,18 @@ def retrieve(
             client = _vector_client()
             if client is not None:
                 embedding = get_embedding_client().embed([query])[0]
-                vector_scores = _vector_search(
+                vector_results = _vector_search(
                     client,
                     collection="style_guides",
                     vector=embedding,
-                    top_k=top_k * 2,
+                    top_k=max(top_k * 4, 20),
                     filters={
                         "device": normalized_filters.get("device"),
                         "feature_norm": normalized_filters.get("feature_norm"),
                         "style_tag": normalized_filters.get("style_tag"),
                     },
                 )
+                vector_scores = {sid: score for sid, score, _, _ in vector_results}
         vector_norm = _normalize(vector_scores)
 
         combined: Dict[str, float] = {}
@@ -175,20 +254,72 @@ def retrieve(
             )
     else:
         # Style prior mode emphasises stylistic similarity when feature confidence is low.
-        if not entries:
-            stmt = select(models.StyleGuideEntry).limit(200)
-            entries = list(session.scalars(stmt))
-        for entry in entries:
-            base = 0.4
-            if normalized_filters.get("style_tag") and entry.style_tag == normalized_filters.get("style_tag"):
-                base += 0.3
-            if normalized_filters.get("device") and entry.device == normalized_filters.get("device"):
-                base += 0.2
+        query_text = query.strip()
+        if not query_text:
+            query_text = " ".join(
+                str(v)
+                for v in (
+                    normalized_filters.get("style_tag"),
+                    normalized_filters.get("tone"),
+                    normalized_filters.get("device"),
+                )
+                if v
+            )
+
+        candidate_vector_results: List[Tuple[str, float, Optional[List[float]], Dict[str, Any]]] = []
+        client = _vector_client()
+        if client is not None and query_text:
+            embedding = get_embedding_client().embed([query_text])[0]
+            candidate_vector_results = _vector_search(
+                client,
+                collection="style_guides",
+                vector=embedding,
+                top_k=max(top_k * 5, 40),
+                filters={
+                    "device": normalized_filters.get("device"),
+                    "style_tag": normalized_filters.get("style_tag"),
+                },
+                with_vectors=True,
+            )
+
+        # Fall back to database rows when vector search yields nothing.
+        if not candidate_vector_results:
+            if not entries:
+                stmt = select(models.StyleGuideEntry).limit(200)
+                entries = list(session.scalars(stmt))
+            candidate_vector_results = [(entry.id, 0.5, None, {}) for entry in entries]
+
+        entry_lookup: Dict[str, models.StyleGuideEntry] = {entry.id: entry for entry in entries}
+        if len(entry_lookup) < len(candidate_vector_results):
+            # ensure all referenced SIDs are loaded
+            missing_ids = [sid for sid, _, _, _ in candidate_vector_results if sid not in entry_lookup]
+            if missing_ids:
+                extra_stmt = select(models.StyleGuideEntry).where(models.StyleGuideEntry.id.in_(missing_ids))
+                for extra in session.scalars(extra_stmt):
+                    entry_lookup[extra.id] = extra
+
+        mmr_candidates = _mmr(candidate_vector_results, top_k=top_k * 2)
+        norm_scores = _normalize_list((sid, score) for sid, score, _, _ in mmr_candidates)
+
+        reranked: List[Tuple[str, float]] = []
+        for sid, raw_score, _, _ in mmr_candidates:
+            entry = entry_lookup.get(sid)
+            if not entry:
+                continue
+            style_score = _style_rule_score(entry, normalized_filters)
+            combined_score = STYLE_RERANK_WEIGHT * norm_scores.get(sid, raw_score) + (1 - STYLE_RERANK_WEIGHT) * style_score
+            reranked.append((sid, combined_score))
+
+        reranked.sort(key=lambda item: item[1], reverse=True)
+        for sid, score in reranked[: max(1, top_k)]:
+            entry = entry_lookup.get(sid)
+            if not entry:
+                continue
             results.append(
                 {
                     "sid": entry.id,
                     "en_line": entry.text,
-                    "score": float(base),
+                    "score": float(score),
                     "metadata": {
                         "device": entry.device,
                         "feature_norm": entry.feature_norm,
@@ -197,8 +328,6 @@ def retrieve(
                     },
                 }
             )
-            if len(results) >= top_k:
-                break
 
     latency_ms = int((time.time() - start) * 1000)
     return {
@@ -207,6 +336,7 @@ def retrieve(
         "mode": mode,
         "feature_confidence": feature_conf,
         "novelty_mode": mode != "feature",
+        "candidate_count": len(results),
     }
 
 

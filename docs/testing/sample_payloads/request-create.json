@@ -1,0 +1,13 @@
+{
+  "title": "Robot vacuum returns",
+  "feature_name": "charging",
+  "context_description": "Notify the user that the device is returning to its base.",
+  "tone": "concise",
+  "style_preferences": "system.action",
+  "constraints": {
+    "device": "robot_vacuum",
+    "feature_norm": "charging",
+    "style_tag": "concise.system.action"
+  },
+  "assigned_writer_id": "writer-1"
+}

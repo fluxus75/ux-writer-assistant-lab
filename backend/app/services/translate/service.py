@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core import state
 from app.core.settings import settings
+from app.services.guardrails.loader import load_guardrail_rules
 from app.services.guardrails.service import apply_guardrails
 from app.services.llm import get_llm_client
 from app.services.llm.client import LLMClientError
@@ -149,7 +150,15 @@ def translate(
         else:
             candidate_texts.append(base_text)
 
-    rules = _collect_rules(request.run_id) if options.guardrails else {}
+    rules: Dict[str, Any] = {}
+    if options.guardrails:
+        state_rules = _collect_rules(request.run_id)
+        db_rules: Dict[str, Any] = {}
+        if session is not None:
+            db_rules = load_guardrail_rules(session, request=request_context, extra_sources=[state_rules])
+        else:
+            db_rules = state_rules
+        rules = db_rules
     candidates: List[TranslationCandidate] = []
     selected = base_text
     selected_guardrail = None

@@ -1,6 +1,12 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from sqlalchemy import select
+
+from app.db import models, session_scope
 from app.main import app
 from app.services import llm as llm_registry
 from app.services.llm.client import LLMResult, PromptRequest
@@ -8,6 +14,7 @@ from app.services.llm.client import LLMResult, PromptRequest
 
 HEADERS_DESIGNER = {"X-User-Role": "designer", "X-User-Id": "designer-1"}
 HEADERS_WRITER = {"X-User-Role": "writer", "X-User-Id": "writer-1"}
+HEADERS_ADMIN = {"X-User-Role": "admin", "X-User-Id": "admin-1"}
 
 
 class _StubLLM:
@@ -95,4 +102,55 @@ async def test_draft_generation_and_approval(seed_users):
     assert approval_resp.status_code == 201
     approval_body = approval_resp.json()
     assert approval_body["request_status"] == "approved"
+
+    with session_scope() as session:
+        audit_entries = list(
+            session.execute(
+                select(models.AuditLog).where(models.AuditLog.entity_id == request_id)
+            ).scalars()
+        )
+        assert any(entry.action.startswith("approval") for entry in audit_entries)
+        assert any(entry.action == "created" for entry in audit_entries)
+
+
+@pytest.mark.anyio
+async def test_comment_creation_and_resolution(seed_users):
+    with session_scope() as session:
+        session.merge(
+            models.User(
+                id="admin-1",
+                role=models.UserRole.ADMIN,
+                name="Admin",  # minimal admin for resolving comments
+                email="admin@example.com",
+            )
+        )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        await client.post("/v1/ingest")
+        request_payload = {
+            "title": "Robot vacuum returns",
+            "feature_name": "charging",
+            "constraints": {"device": "robot_vacuum"},
+        }
+        create_resp = await client.post("/v1/requests", json=request_payload, headers=HEADERS_DESIGNER)
+        request_id = create_resp.json()["id"]
+
+        comment_payload = {
+            "request_id": request_id,
+            "body": "Please clarify the tone.",
+        }
+        comment_resp = await client.post("/v1/comments", json=comment_payload, headers=HEADERS_WRITER)
+
+    assert comment_resp.status_code == 201
+    comment_id = comment_resp.json()["id"]
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        list_resp = await client.get(f"/v1/requests/{request_id}/comments", headers=HEADERS_WRITER)
+        resolve_resp = await client.post(f"/v1/comments/{comment_id}/resolve", headers=HEADERS_ADMIN)
+
+    assert list_resp.status_code == 200
+    assert any(item["id"] == comment_id for item in list_resp.json()["items"])
+    assert resolve_resp.status_code == 200
+    assert resolve_resp.json()["status"] == "resolved"
 

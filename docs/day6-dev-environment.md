@@ -1,6 +1,6 @@
-# Day 3 — Dev Environment Database & Qdrant Setup
+# Day 6 — Production-Ready Dev Environment Setup
 
-Day 3의 목표는 로컬 개발 환경에서 PostgreSQL과 Qdrant 인스턴스를 기동해 백엔드/RAG 파이프라인이 동일한 스토리지에 접근할 수 있도록 만드는 것입니다. 아래 가이드는 Docker Compose 기반 배포, 애플리케이션 설정, 초기 점검, 데이터 시드까지의 과정을 다룹니다.
+Day 6의 목표는 완전한 워크플로우 시스템을 위한 로컬 개발 환경을 구축하는 것입니다. PostgreSQL과 Qdrant 인스턴스를 기동하고, 전체 워크플로우 API (requests, drafts, approvals, comments)와 하이브리드 RAG 시스템을 테스트할 수 있는 환경을 제공합니다.
 
 ## 1. 사전 준비 사항
 - Docker 24.x + Docker Compose v2
@@ -90,13 +90,13 @@ docker compose up -d
    uv run python -c "from app.services.rag.config import vector_store_config; print(vector_store_config.create_client().get_collections())"
    ```
 
-3. **Alembic 마이그레이션 준비**
-   - Alembic 초기화: `uv run alembic init migrations`
-   - `env.py`에서 `app.db.session.Base.metadata`를 참조하도록 수정
-   - 초기 마이그레이션: `uv run alembic revision --autogenerate -m "init"`
-   - 적용: `uv run alembic upgrade head`
-
-> Day 3 시점에서는 ORM 모델과 마이그레이션 뼈대만 준비하면 됩니다. 실제 워크플로우 테이블 데이터는 `POST /v1/ingest` 호출 시 자동으로 적재됩니다.
+3. **Alembic 마이그레이션 적용**
+   ```bash
+   cd backend
+   uv run alembic upgrade head
+   ```
+   
+   > Day 6에서는 완전한 워크플로우 테이블 스키마(User, Request, Draft, Approval, Comment, AuditLog 등)가 포함된 마이그레이션이 이미 준비되어 있습니다.
 
 ## 4. 애플리케이션 설정 반영
 1. 루트 `.env` 값을 백엔드에서 읽을 수 있도록 `backend/.env` 심볼릭 링크 또는 환경 변수 export를 설정합니다.
@@ -107,7 +107,28 @@ docker compose up -d
    uv pip install -e .[dev]
    uv run uvicorn app.main:app --reload --port 8000
    ```
-3. `POST /v1/ingest`를 호출하면 데이터가 PostgreSQL, Qdrant에 적재되며 로컬 테스트 UI(`fe-test`)에서도 동일한 리소스를 읽게 됩니다.
+3. `POST /v1/ingest`를 호출하면 데이터가 PostgreSQL, Qdrant에 적재되며 워크플로우 API와 RAG 시스템이 활성화됩니다.
+
+## 4.1. Day 6 API 엔드포인트 테스트
+서버가 기동된 후 다음 엔드포인트들을 테스트할 수 있습니다:
+
+**워크플로우 API:**
+- `POST /v1/requests` — UX 카피 요청 생성 (RBAC 헤더 필요)
+- `GET /v1/requests` — 요청 목록 조회
+- `POST /v1/drafts` — AI 드래프트 생성 및 버전 관리
+- `POST /v1/approvals` — 승인/거부 결정 기록
+- `POST /v1/comments` — 협업 코멘트 및 해결 처리
+
+**스모크 테스트 실행:**
+```bash
+# 전체 워크플로우 테스트 (LLM API Key 필요)
+export LLM_API_KEY=your_openai_key
+export WORKFLOW_SMOKE=1
+export DESIGNER_ID=designer-1
+export WRITER_ID=writer-1
+export ADMIN_ID=admin-1
+scripts/dev/run_day3_smoke.sh
+```
 
 ## 5. 기본 컬렉션 (Qdrant)
 | Collection | 용도 | 벡터 차원 | 주요 메타데이터 |
@@ -117,7 +138,7 @@ docker compose up -d
 | `glossary_terms` | 용어집 엔트리 | 1024 | term, translation, language_pair, device, must_use |
 | `context_snippets` | 컨텍스트/대화 사례 | 1024 | context_id, product_area, locale, tags |
 
-Day 3 구현에서는 기본적으로 결정적 스텁 임베딩을 사용하지만, `EMBEDDING_BACKEND=onnx`와 `EMBEDDING_ONNX_PATH=/path/to/model.onnx`를 지정하면 즉시 bge-m3 ONNX 추론 경로를 활성화할 수 있습니다. 모델과 `tokenizer.json` 파일은 동일 폴더에 존재해야 하며, ONNX 패키지(`onnxruntime`, `tokenizers`) 의존성은 `uv pip install -e .` 명령으로 설치됩니다.
+Day 6에서는 하이브리드 검색 시스템이 완전히 구현되어 있으며, MMR(Maximal Marginal Relevance) 기반 diversity filtering과 스타일 기반 reranking을 지원합니다. `EMBEDDING_BACKEND=onnx`와 `EMBEDDING_ONNX_PATH=/path/to/model.onnx`를 지정하면 bge-m3 ONNX 추론을 활성화할 수 있습니다. 자세한 내용은 `docs/models/bge-m3-onnx-export.md`를 참조하세요.
 
 ```bash
 # 예시: huggingface transformers에서 변환된 ONNX 모델 사용 시
@@ -126,14 +147,29 @@ export EMBEDDING_ONNX_PATH="$HOME/models/bge-m3/bge-m3.onnx"
 uv run python -c "from app.services.rag.embedding import get_embedding_client; print(len(get_embedding_client().embed(['test'])[0]))"
 ```
 
-## 6. 종료 & 데이터 초기화
+## 6. 프론트엔드 연동 (Day 6)
+Next.js 워크스페이스 쉘을 함께 실행하여 전체 시스템을 테스트할 수 있습니다:
+
+```bash
+# 프론트엔드 실행
+cd frontend
+pnpm install
+pnpm dev  # http://localhost:3000
+
+# 환경 변수 설정 (.env.local)
+NEXT_PUBLIC_API_BASE=http://localhost:8000
+NEXT_PUBLIC_API_ROLE=designer
+NEXT_PUBLIC_API_USER_ID=designer-1
+```
+
+## 7. 종료 & 데이터 초기화
 ```bash
 cd infra/dev
 docker compose down
 rm -rf dev-data/postgres/* dev-data/qdrant/*  # 전체 초기화 시
 ```
 
-## 7. 트러블슈팅 메모
+## 8. 트러블슈팅 메모
 - Qdrant 연결 오류가 발생하면 `curl http://localhost:6333/collections`로 상태를 확인하세요.
 - Windows 환경에서 Docker Desktop을 사용하는 경우 포트 충돌을 방지하기 위해 5432, 6333, 6334 포트를 여유 있게 확보합니다.
 - PostgreSQL 연결 문자열에 `psycopg` 드라이버가 포함되어야 합니다 (`postgresql+psycopg://`).
@@ -141,10 +177,17 @@ rm -rf dev-data/postgres/* dev-data/qdrant/*  # 전체 초기화 시
 
 ---
 
-DB/Qdrant가 기동된 이후에는 다음 트랙을 병렬로 진행할 수 있습니다.
+## Day 6 완성된 기능들
 
-- **Backend/API**: SQLAlchemy 세션을 FastAPI 의존성으로 연결하고 `/v1/ingest`가 Postgres/Qdrant에 데이터를 기록하도록 재구현했습니다. 이후 `/v1/requests`, `/v1/drafts` 등 워크플로우 API를 추가합니다.
-- **RAG·데이터/ML**: `default_collections` 기준으로 컬렉션을 초기화하고, 향후 Day 5에 실제 bge-m3 임베딩 파이프라인을 교체하면 됩니다.
-- **Frontend**: Next.js 기반 앱에서 요청 생성/검수 플로우 UI를 실제 API와 연동할 준비를 진행합니다.
-- **Frontend**: Next.js 14 App Router 스캐폴드를 `frontend/` 디렉터리에 추가했습니다. `pnpm dev`로 실행하여 요청 리스트, 워크스페이스, Export 대시보드를 확인할 수 있습니다.
+- **완전한 워크플로우 API**: 요청 생성부터 승인까지의 전체 플로우가 구현되어 있습니다
+- **하이브리드 RAG 시스템**: MMR 기반 diversity filtering과 스타일 기반 reranking 지원
+- **고급 Guardrails**: 데이터베이스 기반 rule 로딩과 YAML/DB 병합 지원  
+- **Audit 로깅**: 모든 워크플로우 액션에 대한 감사 추적
+- **Next.js 워크스페이스**: 실시간 데이터를 활용한 프로덕션급 UI
+- **E2E 테스트**: 자동화된 스모크 테스트와 샘플 페이로드 제공
+
+추가 문서:
+- `docs/testing/frontend-e2e-guide.md` — 프론트엔드 E2E 테스트 가이드
+- `docs/models/bge-m3-onnx-export.md` — ONNX 모델 export 파이프라인  
+- `scripts/dev/run_day3_smoke.sh` — 전체 워크플로우 자동 테스트
 

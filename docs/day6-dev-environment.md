@@ -6,6 +6,10 @@ Day 6의 목표는 완전한 워크플로우 시스템을 위한 로컬 개발 �
 - Docker 24.x + Docker Compose v2
 - Python 3.11 (백엔드 가상환경 생성 시 필요)
 - `uv` CLI (https://github.com/astral-sh/uv)
+- `jq` (JSON 처리용, 스모크 테스트 스크립트에서 필요)
+  - Windows: `winget install jqlang.jq`
+  - macOS: `brew install jq`
+  - Linux: `sudo apt install jq` 또는 `sudo yum install jq`
 - 레포지토리 루트에 `.env` 파일. 예시는 다음과 같습니다.
 
 ```dotenv
@@ -130,6 +134,8 @@ export ADMIN_ID=admin-1
 scripts/dev/run_day3_smoke.sh
 ```
 
+> **참고**: 스모크 테스트 스크립트는 `jq`를 사용하여 JSON 응답을 처리합니다. 설치 후 새 터미널 세션을 시작해야 환경 변수가 적용됩니다.
+
 ## 5. 기본 컬렉션 (Qdrant)
 | Collection | 용도 | 벡터 차원 | 주요 메타데이터 |
 |------------|------|-----------|-----------------|
@@ -174,6 +180,10 @@ rm -rf dev-data/postgres/* dev-data/qdrant/*  # 전체 초기화 시
 - Windows 환경에서 Docker Desktop을 사용하는 경우 포트 충돌을 방지하기 위해 5432, 6333, 6334 포트를 여유 있게 확보합니다.
 - PostgreSQL 연결 문자열에 `psycopg` 드라이버가 포함되어야 합니다 (`postgresql+psycopg://`).
 - 로컬 테스트에서는 Qdrant API Key가 비어 있으면 됩니다. 매니지드 환경에서만 `QDRANT_API_KEY`를 채우세요.
+- 스모크 테스트에서 "jq: command not found" 오류 시:
+  - `jq` 설치 후 새 터미널 세션을 시작하세요
+  - Windows: 설치 후 PowerShell/명령 프롬프트를 재시작
+  - Git Bash 사용 시: `winget install jqlang.jq` 후 Git Bash 재시작
 
 ---
 

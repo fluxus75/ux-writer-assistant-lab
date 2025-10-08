@@ -43,7 +43,16 @@ class VectorStoreConfig:
     https: bool = False
 
     def create_client(self) -> QdrantClient:
-        return QdrantClient(host=self.host, port=self.port, api_key=self.api_key, prefer_grpc=self.prefer_grpc, https=self.https)
+        # For local development, don't pass api_key if it's empty to avoid insecure connection warnings
+        kwargs = {
+            "host": self.host,
+            "port": self.port,
+            "prefer_grpc": self.prefer_grpc,
+            "https": self.https,
+        }
+        if self.api_key:
+            kwargs["api_key"] = self.api_key
+        return QdrantClient(**kwargs)
 
 
 embedding_config = EmbeddingModelConfig(name=settings.embedding_model, dimension=1024, precision=settings.embedding_precision)

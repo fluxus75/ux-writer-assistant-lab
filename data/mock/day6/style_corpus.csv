@@ -1,0 +1,11 @@
+sid,device,feature_norm,style_tag,en_line,notes
+AP-S001,air_purifier,air_quality,concise.system.info,Air quality is currently good.,
+AP-S002,air_purifier,boost_mode,concise.system.action,Boost mode is on.,
+AP-S003,air_purifier,timer,concise.system.action,Timer set for 2 hours.,
+AP-S004,air_purifier,filter_life,concise.system.info,20% filter life remaining.,
+AP-S005,air_purifier,sleep_mode,concise.system.action,Switched to Sleep Mode.,
+RV-S001,robot_vacuum,charging,concise.system.action,Heading back to the charging station.,Use progressive tone
+RV-S002,robot_vacuum,start_cleaning,concise.system.action,Starting a cleaning run.,
+RV-S003,robot_vacuum,pause,concise.system.action,Pausing for now.,
+RV-S004,robot_vacuum,silent_mode,concise.system.action,Switched to Silent Mode.,
+RV-S005,robot_vacuum,dustbin_status,concise.system.info,Dust bin is 60% full.,

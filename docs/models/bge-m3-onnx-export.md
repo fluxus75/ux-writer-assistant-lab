@@ -5,10 +5,9 @@ The backend can run with deterministic stub embeddings, but production-like eval
 ## 1. Install prerequisites
 
 ```bash
-python -m venv .venv-onnx
-source .venv-onnx/bin/activate
-pip install --upgrade pip
-pip install torch>=2.1 transformers>=4.37 optimum[onnxruntime]>=1.17
+uv venv .venv-onnx
+source .venv-onnx/bin/activate  # Windows: .venv-onnx\Scripts\activate
+uv pip install torch>=2.1 transformers>=4.37 optimum[onnxruntime]>=1.17
 ```
 
 ## 2. Export the encoder to ONNX
@@ -61,10 +60,10 @@ When the FastAPI server starts, it loads `model.onnx` and automatically locates 
 
 ## 4. Optional: GPU execution
 
-If CUDA is available, install `onnxruntime-gpu` instead of the CPU wheel and re-run the export with `provider="CUDAExecutionProvider"`. Update `pip install` accordingly:
+If CUDA is available, install `onnxruntime-gpu` instead of the CPU wheel and re-run the export with `provider="CUDAExecutionProvider"`. Update the install command accordingly:
 
 ```bash
-pip install onnxruntime-gpu>=1.16
+uv pip install onnxruntime-gpu>=1.16
 ```
 
 The runtime automatically falls back to CPU if GPU is unavailable.

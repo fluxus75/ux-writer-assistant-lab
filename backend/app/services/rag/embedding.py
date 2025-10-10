@@ -91,7 +91,29 @@ class EmbeddingClient:
         outputs = self._session.run(None, ort_inputs)
         if not outputs:
             raise RuntimeError("ONNX embedding session returned no outputs")
-        embeddings = outputs[0]
+        embeddings = np.asarray(outputs[0])
+
+        # BGE-M3 ONNX emits multi-vector tensors shaped (batch, num_vector_types, dim).
+        # Collapse to the first (dense) vector so Qdrant always receives a flat embedding.
+        if embeddings.ndim == 3:
+            embeddings = embeddings[:, 0, :]
+
+        if embeddings.ndim == 1:
+            embeddings = embeddings.reshape(1, -1)
+        elif embeddings.ndim != 2:
+            squeezed = np.squeeze(embeddings)
+            if squeezed.ndim == 1:
+                embeddings = squeezed.reshape(1, -1)
+            elif squeezed.ndim == 2:
+                embeddings = squeezed
+            else:
+                raise RuntimeError(f"Unexpected embedding tensor shape: {embeddings.shape}")
+
+        if embeddings.shape[1] != self.dimension:
+            raise RuntimeError(
+                f"Embedding dimension mismatch: expected {self.dimension}, got {embeddings.shape[1]}"
+            )
+
         norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
         norms[norms == 0] = 1.0
         normalized = embeddings / norms

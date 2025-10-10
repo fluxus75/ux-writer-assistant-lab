@@ -1,0 +1,7 @@
+ko_term,en_term,device,must_use,pos,synonyms_ko,notes
+공기질,air quality,air_purifier,True,noun,공기 상태,
+터보 모드,Turbo Mode,air_purifier,False,noun,강풍 모드,
+필터,filter,air_purifier,True,noun,정화 필터,
+충전대,charging station,robot_vacuum,True,noun,도킹스테이션,Prefer native Korean wording
+사일런트 모드,Silent Mode,robot_vacuum,True,noun,조용 모드,
+먼지통,dust bin,robot_vacuum,False,noun,먼지통,

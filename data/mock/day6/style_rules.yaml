@@ -1,0 +1,9 @@
+length_max: 100
+forbidden_terms: 
+  - "charger"
+  - "dock"
+  - "app"
+replace_map:
+  "charger": "charging station"
+  "dock": "charging station"
+  "app": "application"

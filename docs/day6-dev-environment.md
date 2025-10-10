@@ -126,7 +126,7 @@ docker compose up -d
 **스모크 테스트 실행:**
 ```bash
 # 전체 워크플로우 테스트 (LLM API Key 필요)
-export LLM_API_KEY=your_openai_key
+export LLM_API_KEY=sk-your-openai-key-here
 export WORKFLOW_SMOKE=1
 export DESIGNER_ID=designer-1
 export WRITER_ID=writer-1

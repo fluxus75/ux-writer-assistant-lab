@@ -1,0 +1,42 @@
+{
+  "items": [
+    {
+      "sid": "S001",
+      "en_line": "Returning to charging station.",
+      "score": 0.72,
+      "metadata": {
+        "device": "robot_vacuum",
+        "feature_norm": "charging",
+        "style_tag": "concise.system.action",
+        "tone": null
+      }
+    },
+    {
+      "sid": "S002",
+      "en_line": "Starting cleaning.",
+      "score": 0.72,
+      "metadata": {
+        "device": "robot_vacuum",
+        "feature_norm": "start_cleaning",
+        "style_tag": "concise.system.action",
+        "tone": null
+      }
+    },
+    {
+      "sid": "S003",
+      "en_line": "Paused.",
+      "score": 0.72,
+      "metadata": {
+        "device": "robot_vacuum",
+        "feature_norm": "pause",
+        "style_tag": "concise.system.action",
+        "tone": null
+      }
+    }
+  ],
+  "latency_ms": 1513,
+  "mode": "style",
+  "feature_confidence": 0.0,
+  "novelty_mode": true,
+  "candidate_count": 3
+}

@@ -1,0 +1,8 @@
+API_BASE=http://localhost:8000
+
+Ingest counts:
+{
+  "context": 3,
+  "glossary": 3,
+  "style": 3
+}

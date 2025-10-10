@@ -1,0 +1,12 @@
+{
+  "request_id": "27939714-46ca-4f20-8d82-09edf5455c16",
+  "text": "로봇이 충전 거점으로 돌아갑니다.",
+  "source_language": "ko",
+  "target_language": "en",
+  "hints": {},
+  "glossary": {},
+  "num_candidates": 3,
+  "use_rag": true,
+  "rag_top_k": 5,
+  "temperature": 0.2
+}

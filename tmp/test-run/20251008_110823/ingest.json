@@ -1,0 +1,16 @@
+{
+  "run_id": "20251008_110824",
+  "counts": {
+    "context": 3,
+    "glossary": 3,
+    "style": 3
+  },
+  "vector_store": {
+    "status": "completed",
+    "collections": {
+      "style_guides": 3,
+      "glossary_terms": 3,
+      "context_snippets": 3
+    }
+  }
+}

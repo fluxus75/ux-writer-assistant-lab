@@ -1,0 +1,18 @@
+{
+  "id": "7fc699d4-1455-48f8-bc34-43fa3f6c80c7",
+  "title": "Robot vacuum returns",
+  "feature_name": "charging",
+  "status": "drafting",
+  "assigned_writer_id": "writer-1",
+  "created_at": "2025-10-08T02:12:30.759853Z",
+  "updated_at": "2025-10-08T02:12:30.759853Z",
+  "draft_count": 0,
+  "context_description": "Notify the user that the device is returning to its base.",
+  "tone": "concise",
+  "style_preferences": "system.action",
+  "constraints_json": {
+    "device": "robot_vacuum",
+    "feature_norm": "charging",
+    "style_tag": "concise.system.action"
+  }
+}

@@ -1,0 +1,18 @@
+API_BASE=http://localhost:8000
+
+Ingest counts:
+{
+  "context": 3,
+  "glossary": 3,
+  "style": 3
+}
+Seeded test users: designer-1, writer-1, admin-1
+Draft payload saved to draft-payload.json
+
+Smoke test complete.
+Artifacts:
+  - health.json
+  - ingest.json
+  - retrieve.json
+  - translate-basic.json (optional)
+  - request.json / draft.json / approval.json / comment.json (optional workflow)

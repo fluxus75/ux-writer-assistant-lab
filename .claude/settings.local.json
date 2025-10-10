@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(claude mcp get:*)",
-      "Bash(uv run alembic revision:*)"
+      "Bash(uv run alembic revision:*)",
+      "Bash(mkdir:*)",
+      "Bash(pnpm run:*)",
+      "Bash(git add:*)",
+      "Bash(git checkout:*)"
     ],
     "defaultMode": "acceptEdits"
   }

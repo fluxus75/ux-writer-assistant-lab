@@ -1,0 +1,29 @@
+API_BASE=http://localhost:8000
+
+Ingest counts:
+{
+  "context": 3,
+  "glossary": 3,
+  "style": 3
+}
+Seeded test users: designer-1, writer-1, admin-1
+Draft payload: {
+  "request_id": "7fc699d4-1455-48f8-bc34-43fa3f6c80c7",
+  "text": "로봇이 충전 거점으로 돌아갑니다.",
+  "source_language": "ko",
+  "target_language": "en",
+  "hints": {},
+  "glossary": {},
+  "num_candidates": 3,
+  "use_rag": true,
+  "rag_top_k": 5,
+  "temperature": 0.2
+}
+
+Smoke test complete.
+Artifacts:
+  - health.json
+  - ingest.json
+  - retrieve.json
+  - translate-basic.json (optional)
+  - request.json / draft.json / approval.json / comment.json (optional workflow)

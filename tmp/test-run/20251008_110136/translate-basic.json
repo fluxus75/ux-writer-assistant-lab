@@ -1,0 +1,25 @@
+{
+  "selected": "The robot is returning to the charging station.",
+  "candidates": [
+    {
+      "text": "The robot is returning to the charging station.",
+      "guardrail": null
+    }
+  ],
+  "rationale": "LLM-first translation with optional guardrail adjustments",
+  "metadata": {
+    "llm": {
+      "latency_ms": 2270.724700007122,
+      "model": "gpt-4o-mini"
+    },
+    "retrieval": {
+      "items": [],
+      "latency_ms": 0,
+      "mode": null,
+      "feature_confidence": 0.0,
+      "novelty_mode": false
+    },
+    "guardrails": null,
+    "novelty_mode": false
+  }
+}

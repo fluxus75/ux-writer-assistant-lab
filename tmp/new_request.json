@@ -1,0 +1,8 @@
+{
+  "title": "Test Generate AI Draft Button",
+  "feature_name": "test_draft_generation",
+  "context_description": "Testing the new Generate AI Draft functionality in the frontend",
+  "tone": "friendly",
+  "style_preferences": "concise",
+  "assigned_writer_id": "writer-1"
+}

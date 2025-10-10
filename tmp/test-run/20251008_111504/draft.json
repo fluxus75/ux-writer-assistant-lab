@@ -1,0 +1,128 @@
+{
+  "id": "4c2697c1-7750-4a37-bb57-49bf9c8353e1",
+  "request_id": "27939714-46ca-4f20-8d82-09edf5455c16",
+  "llm_run_id": "5e581d60-43ba-4c79-89d2-09414956a4e6",
+  "generation_method": "ai",
+  "created_by": "writer-1",
+  "created_at": "2025-10-08T02:15:10.273167Z",
+  "versions": [
+    {
+      "id": "36451a13-5b4d-444e-8c85-a151df4ba241",
+      "version_index": 1,
+      "content": "The robot is returning to the charging station.",
+      "metadata_json": {
+        "retrieval": {
+          "items": [
+            {
+              "sid": "S001",
+              "en_line": "Returning to charging station.",
+              "score": 1.0,
+              "metadata": {
+                "device": "robot_vacuum",
+                "feature_norm": "charging",
+                "style_tag": "concise.system.action",
+                "tone": null
+              }
+            }
+          ],
+          "latency_ms": 1353,
+          "mode": "feature",
+          "feature_confidence": 0.8,
+          "novelty_mode": false,
+          "candidate_count": 1
+        },
+        "novelty_mode": false,
+        "candidate_index": 1,
+        "original_text": "The robot is returning to the charging station.",
+        "guardrail_result": {
+          "text": "The robot is returning to the charging station.",
+          "passes": false,
+          "violations": [
+            "length>40"
+          ],
+          "fixed": "The robot is returning to the charging station."
+        }
+      },
+      "created_at": "2025-10-08T02:15:10.273167Z"
+    },
+    {
+      "id": "51851ac1-1952-4e2d-a982-17b1c13c23f8",
+      "version_index": 2,
+      "content": "The robot is returning to the charging station.",
+      "metadata_json": {
+        "retrieval": {
+          "items": [
+            {
+              "sid": "S001",
+              "en_line": "Returning to charging station.",
+              "score": 1.0,
+              "metadata": {
+                "device": "robot_vacuum",
+                "feature_norm": "charging",
+                "style_tag": "concise.system.action",
+                "tone": null
+              }
+            }
+          ],
+          "latency_ms": 1353,
+          "mode": "feature",
+          "feature_confidence": 0.8,
+          "novelty_mode": false,
+          "candidate_count": 1
+        },
+        "novelty_mode": false,
+        "candidate_index": 2,
+        "original_text": "The robot is returning to the charging station.",
+        "guardrail_result": {
+          "text": "The robot is returning to the charging station.",
+          "passes": false,
+          "violations": [
+            "length>40"
+          ],
+          "fixed": "The robot is returning to the charging station."
+        }
+      },
+      "created_at": "2025-10-08T02:15:10.273167Z"
+    },
+    {
+      "id": "9da442f4-dcfe-45e1-9e69-2b30c791f3ab",
+      "version_index": 3,
+      "content": "The robot is returning to the charging station.",
+      "metadata_json": {
+        "retrieval": {
+          "items": [
+            {
+              "sid": "S001",
+              "en_line": "Returning to charging station.",
+              "score": 1.0,
+              "metadata": {
+                "device": "robot_vacuum",
+                "feature_norm": "charging",
+                "style_tag": "concise.system.action",
+                "tone": null
+              }
+            }
+          ],
+          "latency_ms": 1353,
+          "mode": "feature",
+          "feature_confidence": 0.8,
+          "novelty_mode": false,
+          "candidate_count": 1
+        },
+        "novelty_mode": false,
+        "candidate_index": 3,
+        "original_text": "The robot is returning to the charging station.",
+        "guardrail_result": {
+          "text": "The robot is returning to the charging station.",
+          "passes": false,
+          "violations": [
+            "length>40"
+          ],
+          "fixed": "The robot is returning to the charging station."
+        }
+      },
+      "created_at": "2025-10-08T02:15:10.273167Z"
+    }
+  ],
+  "request_status": "in_review"
+}

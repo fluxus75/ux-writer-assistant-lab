@@ -1,0 +1,9 @@
+API_BASE=http://localhost:8000
+
+Ingest counts:
+{
+  "context": 3,
+  "glossary": 3,
+  "style": 3
+}
+Seeded test users: designer-1, writer-1, admin-1

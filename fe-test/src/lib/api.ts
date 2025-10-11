@@ -1,13 +1,57 @@
+import type {
+  ApprovalPayload,
+  ApprovalResponse,
+  CreateDraftPayload,
+  CreateRequestPayload,
+  Draft,
+  RequestDetail,
+  RequestSummary,
+  User,
+} from './types';
+import { loadUser } from './userStorage';
+
 export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
-export async function postJSON<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(body||{})
+function getAuthHeaders(): Record<string, string> {
+  const user = loadUser();
+  if (!user) {
+    return {};
+  }
+  return {
+    'X-User-Role': user.role,
+    'X-User-Id': user.id,
+  };
+}
+
+export async function apiCall<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...getAuthHeaders(),
+    ...(options.headers ?? {}),
+  } as Record<string, string>;
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
   });
-  if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json() as Promise<T>;
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`${response.status} ${response.statusText}${errorText ? `: ${errorText}` : ''}`);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
+}
+
+export async function postJSON<T>(path: string, body: unknown): Promise<T> {
+  return apiCall<T>(path, {
+    method: 'POST',
+    body: JSON.stringify(body ?? {}),
+  });
 }
 
 export interface TranslateOptions {
@@ -31,7 +75,9 @@ export interface TranslateRequest {
   options?: TranslateOptions;
 }
 
-export interface TranslationCandidate { text: string }
+export interface TranslationCandidate {
+  text: string;
+}
 
 export interface TranslateResponse {
   selected: string;
@@ -47,3 +93,34 @@ export interface TranslateResponse {
 export function translate(payload: TranslateRequest) {
   return postJSON<TranslateResponse>('/v1/translate', payload);
 }
+
+export function getRequests() {
+  return apiCall<{ items: RequestSummary[] }>('/v1/requests');
+}
+
+export function getRequest(id: string) {
+  return apiCall<RequestDetail>(`/v1/requests/${id}`);
+}
+
+export function createRequest(payload: CreateRequestPayload) {
+  return apiCall<RequestDetail>('/v1/requests', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function generateDraft(payload: CreateDraftPayload) {
+  return apiCall<Draft>('/v1/drafts', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createApproval(payload: ApprovalPayload) {
+  return apiCall<ApprovalResponse>('/v1/approvals', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export type { User };

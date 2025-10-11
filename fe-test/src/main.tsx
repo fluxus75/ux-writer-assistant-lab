@@ -1,24 +1,76 @@
-import React from 'react'
-import { createRoot } from 'react-dom/client'
-import { Ingest } from './pages/Ingest'
-import { Retrieve } from './pages/Retrieve'
-import { Translate } from './pages/Translate'
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { RoleSelector } from './components/RoleSelector';
+import { UserProvider, useUser } from './components/UserContext';
+import { DesignerDashboard } from './pages/DesignerDashboard';
+import { WriterDashboard } from './pages/WriterDashboard';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { RequestDetail } from './pages/RequestDetail';
+import { RequestCreate } from './pages/RequestCreate';
 
-function App() {
-  const [tab, setTab] = React.useState<'ingest'|'retrieve'|'translate'>('ingest')
-  return (
-    <div style={{fontFamily:'system-ui', padding:16}}>
-      <h1>UX Writer Assistant — FE Test</h1>
-      <div style={{display:'flex', gap:8, margin:'12px 0'}}>
-        <button onClick={()=>setTab('ingest')}>Ingest</button>
-        <button onClick={()=>setTab('retrieve')}>Retrieve</button>
-        <button onClick={()=>setTab('translate')}>Translate</button>
-      </div>
-      {tab==='ingest' && <Ingest/>}
-      {tab==='retrieve' && <Retrieve/>}
-      {tab==='translate' && <Translate/>}
-    </div>
-  )
+function useHashRoute() {
+  const [route, setRoute] = React.useState(() =>
+    typeof window === 'undefined' ? '' : window.location.hash.replace(/^#/, ''),
+  );
+
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      setRoute(window.location.hash.replace(/^#/, ''));
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  return route;
 }
 
-createRoot(document.getElementById('root')!).render(<App/>)
+function RouterView() {
+  const { currentUser } = useUser();
+  const route = useHashRoute();
+
+  if (!currentUser) {
+    return <RoleSelector />;
+  }
+
+  const [segment, requestId] = route.split('/');
+
+  if (segment === 'request' && requestId) {
+    return <RequestDetail requestId={requestId} mode="view" onBack={() => (window.location.hash = '')} />;
+  }
+
+  if (segment === 'work' && requestId) {
+    return <RequestDetail requestId={requestId} mode="work" onBack={() => (window.location.hash = '')} />;
+  }
+
+  if (segment === 'create-request') {
+    return <RequestCreate />;
+  }
+
+  switch (currentUser.role) {
+    case 'designer':
+      return <DesignerDashboard />;
+    case 'writer':
+      return <WriterDashboard />;
+    case 'admin':
+      return <AdminDashboard />;
+    default:
+      return <RoleSelector />;
+  }
+}
+
+function App() {
+  return (
+    <UserProvider>
+      <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+        <RouterView />
+      </div>
+    </UserProvider>
+  );
+}
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('Root element not found');
+}
+
+createRoot(rootElement).render(<App />);

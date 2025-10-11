@@ -59,6 +59,8 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
         source_language: sourceLanguage,
         target_language: targetLanguage,
         num_candidates: 3,
+        use_rag: true,
+        rag_top_k: 3,
       });
       addDraft(draft);
       setRequest({ ...request, status: draft.request_status });

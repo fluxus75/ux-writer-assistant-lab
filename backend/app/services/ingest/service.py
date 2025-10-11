@@ -118,10 +118,25 @@ def _collect_glossary_vectors(glossary_rows: List[Dict[str, Any]]) -> List[qmode
     return _batch_embed(items)
 
 
-def do_ingest(session: Session, vector_client: Optional[QdrantClient] = None) -> Dict[str, Any]:
-    """Load seed data from `data/input` into Postgres and Qdrant."""
+def do_ingest(session: Session, data_path: str = "input", vector_client: Optional[QdrantClient] = None) -> Dict[str, Any]:
+    """Load seed data from specified path into Postgres and Qdrant.
 
-    inp = os.path.join(DATA_ROOT, "input")
+    Args:
+        session: Database session
+        data_path: Relative path from DATA_ROOT (e.g., "input" or "mock/day6")
+        vector_client: Optional Qdrant client
+    """
+    logger.info(f"do_ingest called with data_path={data_path}")
+
+    # Security: prevent directory traversal
+    if ".." in data_path or data_path.startswith("/"):
+        raise ValueError("Invalid data_path: directory traversal not allowed")
+
+    inp = os.path.join(DATA_ROOT, data_path)
+    logger.info(f"Loading data from: {inp}")
+    if not os.path.exists(inp):
+        raise FileNotFoundError(f"Data path does not exist: {inp}")
+
     context_rows = io_utils.read_jsonl(os.path.join(inp, "context.jsonl"))
     glossary_rows = io_utils.read_csv(os.path.join(inp, "glossary.csv"))
     style_rows = io_utils.read_csv(os.path.join(inp, "style_corpus.csv"))

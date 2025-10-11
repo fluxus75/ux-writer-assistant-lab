@@ -26,6 +26,7 @@ export interface RequestDetail extends RequestSummary {
   tone?: string | null;
   style_preferences?: string | null;
   constraints_json?: unknown;
+  drafts?: Draft[];
 }
 
 export interface DraftVersion {
@@ -45,6 +46,7 @@ export interface Draft {
   created_at: string;
   versions: DraftVersion[];
   request_status: RequestStatus;
+  selected_version_id?: string | null;
 }
 
 export interface CreateRequestPayload {
@@ -84,5 +86,13 @@ export interface ApprovalResponse {
   comment?: string | null;
   decided_by: string;
   decided_at: string;
+  request_status: RequestStatus;
+}
+
+export interface DraftSelectionState {
+  draft_id: string;
+  version_id?: string | null;
+  selected_by?: string | null;
+  selected_at?: string | null;
   request_status: RequestStatus;
 }

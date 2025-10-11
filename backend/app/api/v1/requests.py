@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -29,6 +29,27 @@ class RequestCreatePayload(BaseModel):
     assigned_writer_id: Optional[str] = Field(default=None)
 
 
+class DraftVersionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    version_index: int
+    content: str
+    metadata_json: Optional[Dict[str, Any]] = None
+    created_at: datetime
+
+
+class DraftResponse(BaseModel):
+    id: str
+    request_id: str
+    llm_run_id: Optional[str]
+    generation_method: models.DraftGenerationMethod
+    created_by: str
+    created_at: datetime
+    versions: List[DraftVersionResponse]
+    selected_version_id: Optional[str] = None
+
+
 class RequestSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -48,6 +69,7 @@ class RequestDetail(RequestSummary):
     tone: Optional[str] = None
     style_preferences: Optional[str] = None
     constraints_json: Optional[dict] = None
+    drafts: List[DraftResponse] = []
 
 
 class RequestListResponse(BaseModel):
@@ -132,6 +154,33 @@ def get_request(
     record = request_service.get_request(session, request_id)
     if not record:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
+
+    # Build drafts with versions and selection info
+    drafts_data = []
+    for draft in record.drafts:
+        versions_data = [
+            DraftVersionResponse(
+                id=version.id,
+                version_index=version.version_index,
+                content=version.content,
+                metadata_json=version.metadata_json,
+                created_at=version.created_at,
+            )
+            for version in draft.versions
+        ]
+        drafts_data.append(
+            DraftResponse(
+                id=draft.id,
+                request_id=draft.request_id,
+                llm_run_id=draft.llm_run_id,
+                generation_method=draft.generation_method,
+                created_by=draft.created_by,
+                created_at=draft.created_at,
+                versions=versions_data,
+                selected_version_id=draft.selected_version_link.version_id if draft.selected_version_link else None,
+            )
+        )
+
     return RequestDetail(
         id=record.id,
         title=record.title,
@@ -146,6 +195,7 @@ def get_request(
         tone=record.tone,
         style_preferences=record.style_preferences,
         constraints_json=record.constraints_json,
+        drafts=drafts_data,
     )
 
 

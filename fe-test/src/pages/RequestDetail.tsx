@@ -4,7 +4,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { UserSwitcher } from '../components/UserSwitcher';
 import { useUser } from '../components/UserContext';
 import { useDrafts } from '../hooks/useDrafts';
-import { createApproval, generateDraft, getRequest } from '../lib/api';
+import { clearDraftSelection, createApproval, generateDraft, getRequest, selectDraftVersion } from '../lib/api';
 import type { RequestDetail as RequestDetailType } from '../lib/types';
 
 interface RequestDetailProps {
@@ -17,7 +17,7 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
   const [request, setRequest] = React.useState<RequestDetailType | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const { drafts, addDraft, resetDrafts } = useDrafts();
+  const { drafts, addDraft, resetDrafts, setDraftSelection } = useDrafts();
   const { currentUser } = useUser();
 
   const [draftText, setDraftText] = React.useState('');
@@ -31,7 +31,7 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
         setLoading(true);
         const detail = await getRequest(requestId);
         setRequest(detail);
-        resetDrafts([]);
+        resetDrafts(detail.drafts ?? []);
         setError(null);
         // Auto-fill source_text if available
         if (detail.source_text && !draftText) {
@@ -67,7 +67,7 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
         rag_top_k: 3,
       });
       addDraft(draft);
-      setRequest({ ...request, status: draft.request_status });
+      setRequest((prev) => (prev ? { ...prev, status: draft.request_status } : prev));
       setDraftText('');
     } catch (err) {
       alert(err instanceof Error ? err.message : '드래프트 생성 중 오류가 발생했습니다.');
@@ -92,6 +92,32 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
       }
     },
     [request],
+  );
+
+  const handleSelectVersion = React.useCallback(
+    async (draftId: string, versionId: string) => {
+      try {
+        const result = await selectDraftVersion(draftId, versionId);
+        setDraftSelection(result.draft_id, result.version_id ?? null);
+        setRequest((prev) => (prev ? { ...prev, status: result.request_status } : prev));
+      } catch (err) {
+        alert(err instanceof Error ? err.message : '버전 선택 중 오류가 발생했습니다.');
+      }
+    },
+    [setDraftSelection],
+  );
+
+  const handleClearSelection = React.useCallback(
+    async (draftId: string) => {
+      try {
+        const result = await clearDraftSelection(draftId);
+        setDraftSelection(result.draft_id, result.version_id ?? null);
+        setRequest((prev) => (prev ? { ...prev, status: result.request_status } : prev));
+      } catch (err) {
+        alert(err instanceof Error ? err.message : '선택 취소 중 오류가 발생했습니다.');
+      }
+    },
+    [setDraftSelection],
   );
 
   if (loading) {
@@ -220,7 +246,17 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
 
       <section style={{ marginTop: 24 }}>
         <h2 style={{ fontSize: 20 }}>드래프트</h2>
-        <DraftList drafts={drafts} />
+        <DraftList
+          drafts={drafts}
+          canSelect={
+            mode === 'work' &&
+            currentUser?.role === 'writer' &&
+            request.status !== 'approved' &&
+            request.status !== 'rejected'
+          }
+          onSelectVersion={handleSelectVersion}
+          onClearSelection={handleClearSelection}
+        />
       </section>
     </div>
   );

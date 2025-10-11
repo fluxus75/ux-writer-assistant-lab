@@ -22,6 +22,7 @@ class RequestCreatePayload(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     feature_name: str = Field(..., min_length=1, max_length=255)
     context_description: Optional[str] = None
+    source_text: Optional[str] = None
     tone: Optional[str] = Field(default=None, max_length=255)
     style_preferences: Optional[str] = None
     constraints: Optional[dict] = Field(default=None)
@@ -43,6 +44,7 @@ class RequestSummary(BaseModel):
 
 class RequestDetail(RequestSummary):
     context_description: Optional[str] = None
+    source_text: Optional[str] = None
     tone: Optional[str] = None
     style_preferences: Optional[str] = None
     constraints_json: Optional[dict] = None
@@ -70,6 +72,7 @@ def create_request(
             feature_name=payload.feature_name,
             requested_by=user,
             context_description=payload.context_description,
+            source_text=payload.source_text,
             tone=payload.tone,
             style_preferences=payload.style_preferences,
             constraints=payload.constraints,
@@ -88,6 +91,7 @@ def create_request(
         updated_at=request_obj.updated_at,
         draft_count=len(request_obj.drafts),
         context_description=request_obj.context_description,
+        source_text=request_obj.source_text,
         tone=request_obj.tone,
         style_preferences=request_obj.style_preferences,
         constraints_json=request_obj.constraints_json,
@@ -138,6 +142,7 @@ def get_request(
         updated_at=record.updated_at,
         draft_count=len(record.drafts),
         context_description=record.context_description,
+        source_text=record.source_text,
         tone=record.tone,
         style_preferences=record.style_preferences,
         constraints_json=record.constraints_json,

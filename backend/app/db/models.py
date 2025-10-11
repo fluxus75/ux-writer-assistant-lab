@@ -150,6 +150,7 @@ class Request(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     feature_name: Mapped[str] = mapped_column(String(255), nullable=False)
     context_description: Mapped[Optional[str]] = mapped_column(Text)
+    source_text: Mapped[Optional[str]] = mapped_column(Text)
     tone: Mapped[Optional[str]] = mapped_column(String(255))
     style_preferences: Mapped[Optional[str]] = mapped_column(Text)
     constraints_json: Mapped[Optional[dict]] = mapped_column(JSON)
@@ -178,7 +179,10 @@ class Draft(Base):
 
     request: Mapped[Request] = relationship(back_populates="drafts")
     created_by_user: Mapped[User] = relationship(back_populates="drafts")
-    versions: Mapped[List["DraftVersion"]] = relationship(back_populates="draft", cascade="all, delete-orphan")
+    versions: Mapped[List["DraftVersion"]] = relationship(
+        back_populates="draft",
+        cascade="all, delete-orphan"
+    )
 
 
 class DraftVersion(Base):

@@ -22,6 +22,7 @@ export interface RequestSummary {
 
 export interface RequestDetail extends RequestSummary {
   context_description?: string | null;
+  source_text?: string | null;
   tone?: string | null;
   style_preferences?: string | null;
   constraints_json?: unknown;
@@ -50,6 +51,7 @@ export interface CreateRequestPayload {
   title: string;
   feature_name: string;
   context_description?: string;
+  source_text?: string;
   tone?: string;
   style_preferences?: string;
   constraints?: Record<string, unknown>;

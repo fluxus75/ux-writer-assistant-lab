@@ -1,7 +1,11 @@
 import React from 'react';
 import type { Draft } from '../lib/types';
 
-export function DraftList({ drafts }: { drafts: Draft[] }) {
+interface DraftListProps {
+  drafts: Draft[];
+}
+
+export function DraftList({ drafts }: DraftListProps) {
   if (drafts.length === 0) {
     return <p style={{ color: '#6b7280' }}>아직 생성된 드래프트가 없습니다.</p>;
   }
@@ -24,7 +28,7 @@ export function DraftList({ drafts }: { drafts: Draft[] }) {
                 marginTop: 8,
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#4b5563' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#4b5563' }}>
                 <span>버전 {version.version_index + 1}</span>
                 <span>{new Date(version.created_at).toLocaleString()}</span>
               </div>

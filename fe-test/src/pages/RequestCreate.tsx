@@ -10,6 +10,7 @@ export function RequestCreate() {
     title: '',
     feature_name: '',
     context_description: '',
+    source_text: '',
     tone: '',
     style_preferences: '',
     assigned_writer_id: '',
@@ -45,6 +46,7 @@ export function RequestCreate() {
         title: form.title,
         feature_name: form.feature_name,
         context_description: form.context_description || undefined,
+        source_text: form.source_text || undefined,
         tone: form.tone || undefined,
         style_preferences: form.style_preferences || undefined,
         constraints: undefined,
@@ -96,6 +98,16 @@ export function RequestCreate() {
             onChange={(event) => handleChange('context_description', event.target.value)}
             rows={4}
             placeholder="상황과 요구사항을 설명하세요."
+            style={{ padding: 12, borderRadius: 8, border: '1px solid #d1d5db' }}
+          />
+        </label>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span>번역할 원본 텍스트</span>
+          <textarea
+            value={form.source_text}
+            onChange={(event) => handleChange('source_text', event.target.value)}
+            rows={3}
+            placeholder="Writer가 번역할 원본 텍스트를 입력하세요."
             style={{ padding: 12, borderRadius: 8, border: '1px solid #d1d5db' }}
           />
         </label>

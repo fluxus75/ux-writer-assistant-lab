@@ -33,6 +33,10 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
         setRequest(detail);
         resetDrafts([]);
         setError(null);
+        // Auto-fill source_text if available
+        if (detail.source_text && !draftText) {
+          setDraftText(detail.source_text);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : '요청을 불러오지 못했습니다.');
       } finally {
@@ -71,6 +75,7 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
       setGenerating(false);
     }
   }, [request, draftText, sourceLanguage, targetLanguage, addDraft]);
+
 
   const handleApproval = React.useCallback(
     async (decision: 'approved' | 'rejected') => {

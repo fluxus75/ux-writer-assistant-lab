@@ -5,15 +5,15 @@ export function UserSwitcher() {
   const { currentUser, switchUser, availableUsers } = useUser();
 
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-      <span style={{ color: '#6b7280' }}>사용자:</span>
+    <label className="flex items-center gap-3 text-sm text-slate-500">
+      <span className="font-medium">Persona</span>
       <select
         value={currentUser?.id ?? ''}
         onChange={(event) => switchUser(event.target.value)}
-        style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db' }}
+        className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
       >
         <option value="" disabled>
-          역할 선택
+          Select user
         </option>
         {availableUsers.map((user) => (
           <option key={user.id} value={user.id}>

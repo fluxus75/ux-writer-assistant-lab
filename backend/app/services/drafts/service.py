@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
@@ -94,8 +95,6 @@ def generate_ai_draft(
         session.add(version)
         versions.append(version)
 
-    request.status = models.RequestStatus.IN_REVIEW
-    session.add(request)
     session.flush()
     draft.versions = versions
     session.refresh(draft)
@@ -114,5 +113,88 @@ def generate_ai_draft(
     return draft
 
 
-__all__ = ["DraftGenerationParams", "generate_ai_draft"]
+def select_draft_version(
+    session: Session,
+    *,
+    draft: models.Draft,
+    version: models.DraftVersion,
+    actor: models.User,
+) -> models.SelectedDraftVersion:
+    """Select a draft version for designer review."""
+
+    if version.draft_id != draft.id:
+        raise ValueError("Draft version does not belong to the given draft")
+
+    selection = draft.selected_version_link
+    timestamp = datetime.now(timezone.utc)
+    if selection is None:
+        selection = models.SelectedDraftVersion(
+            draft_id=draft.id,
+            version_id=version.id,
+            selected_by=actor.id,
+            selected_at=timestamp,
+        )
+        session.add(selection)
+    else:
+        selection.version_id = version.id
+        selection.selected_by = actor.id
+        selection.selected_at = timestamp
+        session.add(selection)
+
+    request = draft.request
+    request.status = models.RequestStatus.IN_REVIEW
+    session.add(request)
+    session.flush()
+    record_audit_event(
+        session,
+        entity_type="draft",
+        entity_id=draft.id,
+        action="version_selected",
+        payload={"version_id": version.id},
+        actor_id=actor.id,
+    )
+    session.refresh(selection)
+    return selection
+
+
+def clear_draft_selection(
+    session: Session,
+    *,
+    draft: models.Draft,
+    actor: models.User,
+) -> None:
+    """Clear the selected version for the draft."""
+
+    selection = draft.selected_version_link
+    if not selection:
+        return
+
+    session.delete(selection)
+    session.flush()
+
+    request = draft.request
+    has_other_selection = any(
+        other.selected_version_link is not None and other.id != draft.id
+        for other in request.drafts
+    )
+    if not has_other_selection:
+        request.status = models.RequestStatus.DRAFTING
+        session.add(request)
+
+    record_audit_event(
+        session,
+        entity_type="draft",
+        entity_id=draft.id,
+        action="selection_cleared",
+        payload={},
+        actor_id=actor.id,
+    )
+
+
+__all__ = [
+    "DraftGenerationParams",
+    "generate_ai_draft",
+    "select_draft_version",
+    "clear_draft_selection",
+]
 

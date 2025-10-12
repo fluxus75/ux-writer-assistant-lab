@@ -9,31 +9,29 @@ interface RequestCardProps {
 }
 
 export function RequestCard({ request, onClick, showDraftButton }: RequestCardProps) {
+  const assignedLabel = request.assigned_writer_id ? `할당됨: ${request.assigned_writer_id}` : '작가 미할당';
+
   return (
     <div
       role={onClick ? 'button' : undefined}
       onClick={onClick}
-      style={{
-        border: '1px solid #e5e7eb',
-        borderRadius: 12,
-        padding: 16,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
-        cursor: onClick ? 'pointer' : 'default',
-        background: '#ffffff',
-        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
-      }}
+      className={`flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow ${
+        onClick ? 'cursor-pointer hover:shadow-md' : ''
+      }`}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: 18 }}>{request.title}</h3>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">{request.title}</h3>
+          <p className="mt-1 text-sm text-slate-600">기능: {request.feature_name}</p>
+        </div>
         <StatusBadge status={request.status} />
       </div>
-      <p style={{ margin: 0, color: '#4b5563' }}>기능: {request.feature_name}</p>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#6b7280' }}>
-        <span>드래프트 수: {request.draft_count}</span>
-        {request.assigned_writer_id ? <span>담당 라이터: {request.assigned_writer_id}</span> : <span>담당 라이터 미정</span>}
+
+      <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-slate-500">
+        <span>드래프트: {request.draft_count}</span>
+        <span>{assignedLabel}</span>
       </div>
+
       {showDraftButton && (
         <button
           type="button"
@@ -41,18 +39,9 @@ export function RequestCard({ request, onClick, showDraftButton }: RequestCardPr
             event.stopPropagation();
             onClick?.();
           }}
-          style={{
-            alignSelf: 'flex-start',
-            padding: '6px 12px',
-            borderRadius: 6,
-            border: '1px solid #2563eb',
-            background: '#2563eb',
-            color: '#ffffff',
-            fontSize: 13,
-            fontWeight: 600,
-          }}
+          className="inline-flex items-center gap-2 rounded-md bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-primary-500"
         >
-          작업하기
+          작업공간 열기
         </button>
       )}
     </div>

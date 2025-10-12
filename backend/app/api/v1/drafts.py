@@ -11,7 +11,12 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import current_user
 from app.db import get_db_session, models
-from app.services.drafts.service import DraftGenerationParams, generate_ai_draft
+from app.services.drafts.service import (
+    DraftGenerationParams,
+    clear_draft_selection,
+    generate_ai_draft,
+    select_draft_version,
+)
 from app.services.requests import service as request_service
 
 
@@ -49,6 +54,19 @@ class DraftResponse(BaseModel):
     created_by: str
     created_at: datetime
     versions: List[DraftVersionResponse]
+    request_status: models.RequestStatus
+    selected_version_id: Optional[str] = None
+
+
+class DraftSelectionPayload(BaseModel):
+    version_id: str
+
+
+class DraftSelectionState(BaseModel):
+    draft_id: str
+    version_id: Optional[str] = None
+    selected_by: Optional[str] = None
+    selected_at: Optional[datetime] = None
     request_status: models.RequestStatus
 
 
@@ -98,8 +116,77 @@ def generate_draft(
             for version in draft.versions
         ],
         request_status=request_obj.status,
+        selected_version_id=draft.selected_version_link.version_id if draft.selected_version_link else None,
     )
 
 
-__all__ = ["generate_draft", "router"]
+@router.post(
+    "/drafts/{draft_id}/selection",
+    response_model=DraftSelectionState,
+    status_code=status.HTTP_200_OK,
+)
+def select_draft_version_endpoint(
+    draft_id: str,
+    payload: DraftSelectionPayload,
+    session: Session = Depends(get_db_session),
+    actor: models.User = Depends(current_user(models.UserRole.WRITER)),
+):
+    draft = session.get(models.Draft, draft_id)
+    if not draft:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+
+    if draft.request.assigned_writer_id not in {None, actor.id}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Writer not assigned to this request")
+
+    version = session.get(models.DraftVersion, payload.version_id)
+    if not version:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft version not found")
+
+    try:
+        selection = select_draft_version(session, draft=draft, version=version, actor=actor)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    session.refresh(draft.request)
+    return DraftSelectionState(
+        draft_id=draft.id,
+        version_id=selection.version_id,
+        selected_by=selection.selected_by,
+        selected_at=selection.selected_at,
+        request_status=draft.request.status,
+    )
+
+
+@router.delete(
+    "/drafts/{draft_id}/selection",
+    response_model=DraftSelectionState,
+    status_code=status.HTTP_200_OK,
+)
+def clear_draft_selection_endpoint(
+    draft_id: str,
+    session: Session = Depends(get_db_session),
+    actor: models.User = Depends(current_user(models.UserRole.WRITER)),
+):
+    draft = session.get(models.Draft, draft_id)
+    if not draft:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+
+    if draft.request.assigned_writer_id not in {None, actor.id}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Writer not assigned to this request")
+
+    clear_draft_selection(session, draft=draft, actor=actor)
+    session.refresh(draft.request)
+    session.refresh(draft)
+
+    selection = draft.selected_version_link
+    return DraftSelectionState(
+        draft_id=draft.id,
+        version_id=selection.version_id if selection else None,
+        selected_by=selection.selected_by if selection else None,
+        selected_at=selection.selected_at if selection else None,
+        request_status=draft.request.status,
+    )
+
+
+__all__ = ["generate_draft", "select_draft_version_endpoint", "clear_draft_selection_endpoint", "router"]
 

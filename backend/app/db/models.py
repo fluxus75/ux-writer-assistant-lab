@@ -183,6 +183,11 @@ class Draft(Base):
         back_populates="draft",
         cascade="all, delete-orphan"
     )
+    selected_version_link: Mapped[Optional["SelectedDraftVersion"]] = relationship(
+        back_populates="draft",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
 
 class DraftVersion(Base):
@@ -198,7 +203,26 @@ class DraftVersion(Base):
 
     draft: Mapped[Draft] = relationship(back_populates="versions")
     author: Mapped[User] = relationship()
+    selected_entry: Mapped[Optional["SelectedDraftVersion"]] = relationship(
+        back_populates="version",
+        uselist=False,
+    )
     comments: Mapped[List["Comment"]] = relationship(back_populates="draft_version", cascade="all, delete-orphan")
+
+
+class SelectedDraftVersion(Base):
+    """Tracks which draft version a writer selected for review."""
+
+    __tablename__ = "selected_draft_versions"
+
+    draft_id: Mapped[str] = mapped_column(String(36), ForeignKey("drafts.id"), primary_key=True)
+    version_id: Mapped[str] = mapped_column(String(36), ForeignKey("draft_versions.id"), nullable=False)
+    selected_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
+    selected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    draft: Mapped["Draft"] = relationship(back_populates="selected_version_link")
+    version: Mapped["DraftVersion"] = relationship(back_populates="selected_entry")
+    selector: Mapped["User"] = relationship()
 
 
 class Approval(Base):

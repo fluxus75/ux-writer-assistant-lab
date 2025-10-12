@@ -1,69 +1,63 @@
+import './index.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { AppShell } from './components/AppShell';
 import { RoleSelector } from './components/RoleSelector';
 import { UserProvider, useUser } from './components/UserContext';
-import { DesignerDashboard } from './pages/DesignerDashboard';
-import { WriterDashboard } from './pages/WriterDashboard';
+import { useHashRoute } from './hooks/useHashRoute';
 import { AdminDashboard } from './pages/AdminDashboard';
-import { RequestDetail } from './pages/RequestDetail';
+import { DesignerDashboard } from './pages/DesignerDashboard';
 import { RequestCreate } from './pages/RequestCreate';
-
-function useHashRoute() {
-  const [route, setRoute] = React.useState(() =>
-    typeof window === 'undefined' ? '' : window.location.hash.replace(/^#/, ''),
-  );
-
-  React.useEffect(() => {
-    const handleHashChange = () => {
-      setRoute(window.location.hash.replace(/^#/, ''));
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
-
-  return route;
-}
+import { RequestDetail } from './pages/RequestDetail';
+import { WriterDashboard } from './pages/WriterDashboard';
 
 function RouterView() {
   const { currentUser } = useUser();
   const route = useHashRoute();
 
   if (!currentUser) {
-    return <RoleSelector />;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <RoleSelector />
+      </div>
+    );
   }
 
   const [segment, requestId] = route.split('/');
 
+  let view: React.ReactNode;
   if (segment === 'request' && requestId) {
-    return <RequestDetail requestId={requestId} mode="view" onBack={() => (window.location.hash = '')} />;
+    view = <RequestDetail requestId={requestId} mode="view" onBack={() => (window.location.hash = '')} />;
+  } else if (segment === 'work' && requestId) {
+    view = <RequestDetail requestId={requestId} mode="work" onBack={() => (window.location.hash = '')} />;
+  } else if (segment === 'create-request') {
+    view = <RequestCreate />;
+  } else if (segment === 'system-tools') {
+    view = <AdminDashboard initialSection="system" />;
+  } else {
+    switch (currentUser.role) {
+      case 'designer':
+        view = <DesignerDashboard />;
+        break;
+      case 'writer':
+        view = <WriterDashboard />;
+        break;
+      case 'admin':
+        view = <AdminDashboard />;
+        break;
+      default:
+        view = <RoleSelector />;
+        break;
+    }
   }
 
-  if (segment === 'work' && requestId) {
-    return <RequestDetail requestId={requestId} mode="work" onBack={() => (window.location.hash = '')} />;
-  }
-
-  if (segment === 'create-request') {
-    return <RequestCreate />;
-  }
-
-  switch (currentUser.role) {
-    case 'designer':
-      return <DesignerDashboard />;
-    case 'writer':
-      return <WriterDashboard />;
-    case 'admin':
-      return <AdminDashboard />;
-    default:
-      return <RoleSelector />;
-  }
+  return <AppShell>{view}</AppShell>;
 }
 
 function App() {
   return (
     <UserProvider>
-      <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
-        <RouterView />
-      </div>
+      <RouterView />
     </UserProvider>
   );
 }

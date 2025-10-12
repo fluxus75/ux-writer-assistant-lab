@@ -5,29 +5,27 @@ export function RoleSelector() {
   const { currentUser, switchUser, availableUsers } = useUser();
 
   return (
-    <div style={{ padding: 24, fontFamily: 'system-ui' }}>
-      <h2 style={{ marginBottom: 16 }}>사용자 선택</h2>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+    <div className="mx-auto w-full max-w-4xl space-y-6 rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+      <header>
+        <h2 className="text-xl font-semibold text-slate-900">Choose a workspace persona</h2>
+        <p className="mt-1 text-sm text-slate-600">Switch between designer, writer, and admin roles to demo the flow.</p>
+      </header>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {availableUsers.map((user) => {
           const isActive = currentUser?.id === user.id;
           return (
             <button
               key={user.id}
               onClick={() => switchUser(user.id)}
-              style={{
-                padding: '12px 16px',
-                borderRadius: 8,
-                border: isActive ? '2px solid #2563eb' : '1px solid #d1d5db',
-                background: isActive ? '#eff6ff' : '#ffffff',
-                cursor: 'pointer',
-                minWidth: 180,
-                textAlign: 'left',
-                boxShadow: isActive ? '0 0 0 2px rgba(37, 99, 235, 0.15)' : 'none',
-              }}
+              className={`flex h-full flex-col items-start gap-2 rounded-lg border px-4 py-5 text-left transition-shadow ${
+                isActive
+                  ? 'border-primary-600 bg-primary-50 shadow-sm'
+                  : 'border-slate-200 bg-white hover:shadow-md'
+              }`}
             >
-              <strong style={{ display: 'block', fontSize: 16 }}>{user.name}</strong>
-              <span style={{ fontSize: 13, color: '#4b5563' }}>{user.role.toUpperCase()}</span>
-              <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: '#6b7280' }}>{user.email}</span>
+              <strong className="text-base font-semibold text-slate-900">{user.name}</strong>
+              <span className="text-xs font-semibold uppercase tracking-wide text-primary-600">{user.role}</span>
+              <span className="text-sm text-slate-500">{user.email}</span>
             </button>
           );
         })}

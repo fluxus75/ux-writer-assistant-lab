@@ -12,5 +12,18 @@ export function useDrafts(initialDrafts: Draft[] = []) {
     setDrafts(nextDrafts);
   }, []);
 
-  return { drafts, addDraft, resetDrafts };
+  const setDraftSelection = React.useCallback((draftId: string, versionId: string | null) => {
+    setDrafts((prev) =>
+      prev.map((draft) =>
+        draft.id === draftId
+          ? {
+              ...draft,
+              selected_version_id: versionId,
+            }
+          : draft,
+      ),
+    );
+  }, []);
+
+  return { drafts, addDraft, resetDrafts, setDraftSelection };
 }

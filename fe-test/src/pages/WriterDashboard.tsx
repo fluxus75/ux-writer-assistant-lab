@@ -1,6 +1,5 @@
 import React from 'react';
 import { RequestCard } from '../components/RequestCard';
-import { UserSwitcher } from '../components/UserSwitcher';
 import { useUser } from '../components/UserContext';
 import { useRequests } from '../hooks/useRequests';
 
@@ -23,40 +22,44 @@ export function WriterDashboard() {
   }
 
   return (
-    <div style={{ padding: 24, fontFamily: 'system-ui', maxWidth: 960, margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    <div className="space-y-8">
+      <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 style={{ margin: 0, fontSize: 28 }}>Writer Dashboard</h1>
-          <p style={{ marginTop: 8, color: '#6b7280' }}>할당된 요청을 관리하세요.</p>
+          <h1 className="text-2xl font-bold text-slate-900">작가 대시보드</h1>
+          <p className="mt-1 text-sm text-slate-600">할당된 작업을 추적하고 드래프트를 다듬습니다.</p>
         </div>
-        <UserSwitcher />
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              void refresh();
+            }}
+            className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-primary-600 transition-colors hover:bg-slate-50"
+          >
+            새로고침
+          </button>
+        </div>
       </header>
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-        <button
-          type="button"
-          onClick={() => {
-            void refresh();
-          }}
-          style={{
-            padding: '10px 16px',
-            borderRadius: 8,
-            border: '1px solid #e5e7eb',
-            background: '#ffffff',
-            color: '#2563eb',
-            fontWeight: 600,
-          }}
-        >
-          새로고침
-        </button>
-      </div>
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-b-primary-600" />
+          할당된 요청을 불러오는 중...
+        </div>
+      )}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {loading && <p>요청을 불러오는 중...</p>}
-      {error && <p style={{ color: '#b91c1c' }}>{error}</p>}
-
-      <section style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: 20, marginBottom: 12 }}>작업 대기중 ({drafting.length})</h2>
-        <div style={{ display: 'grid', gap: 16 }}>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">작성 대기 중</h2>
+            <p className="text-sm text-slate-600">AI 결과를 검토하거나 새로 작성합니다.</p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+            {drafting.length}
+          </span>
+        </div>
+        <div className="grid gap-4">
           {drafting.map((request) => (
             <RequestCard
               key={request.id}
@@ -67,13 +70,25 @@ export function WriterDashboard() {
               }}
             />
           ))}
-          {!loading && drafting.length === 0 && <p style={{ color: '#6b7280' }}>대기중인 요청이 없습니다.</p>}
+          {!loading && drafting.length === 0 && (
+            <div className="rounded-lg border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
+              작성 대기 중인 작업이 없습니다.
+            </div>
+          )}
         </div>
       </section>
 
-      <section>
-        <h2 style={{ fontSize: 20, marginBottom: 12 }}>검토중 ({inReview.length})</h2>
-        <div style={{ display: 'grid', gap: 16 }}>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">검토중</h2>
+            <p className="text-sm text-slate-600">현재 디자이너 검토 중인 요청입니다.</p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+            {inReview.length}
+          </span>
+        </div>
+        <div className="grid gap-4">
           {inReview.map((request) => (
             <RequestCard
               key={request.id}
@@ -83,7 +98,11 @@ export function WriterDashboard() {
               }}
             />
           ))}
-          {!loading && inReview.length === 0 && <p style={{ color: '#6b7280' }}>검토중인 요청이 없습니다.</p>}
+          {!loading && inReview.length === 0 && (
+            <div className="rounded-lg border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
+              검토 중인 요청이 없습니다.
+            </div>
+          )}
         </div>
       </section>
     </div>

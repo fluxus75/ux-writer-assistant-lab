@@ -89,7 +89,21 @@ async def test_draft_generation_and_approval(seed_users):
     assert draft_resp.status_code == 201
     draft_body = draft_resp.json()
     assert len(draft_body["versions"]) == 2
-    assert draft_body["request_status"] == "in_review"
+    assert draft_body["request_status"] == "drafting"
+
+    selected_version_id = draft_body["versions"][0]["id"]
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        selection_resp = await client.post(
+            f"/v1/drafts/{draft_body['id']}/selection",
+            json={"version_id": selected_version_id},
+            headers=HEADERS_WRITER,
+        )
+
+    assert selection_resp.status_code == 200
+    selection_body = selection_resp.json()
+    assert selection_body["version_id"] == selected_version_id
+    assert selection_body["request_status"] == "in_review"
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         approval_payload = {
@@ -112,6 +126,47 @@ async def test_draft_generation_and_approval(seed_users):
         assert any(entry.action.startswith("approval") for entry in audit_entries)
         assert any(entry.action == "created" for entry in audit_entries)
 
+
+@pytest.mark.anyio
+async def test_clear_draft_selection_restores_status(seed_users):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        await client.post("/v1/ingest")
+        request_payload = {
+            "title": "Robot vacuum returns",
+            "feature_name": "charging",
+            "assigned_writer_id": "writer-1",
+        }
+        create_resp = await client.post("/v1/requests", json=request_payload, headers=HEADERS_DESIGNER)
+        request_id = create_resp.json()["id"]
+
+        draft_payload = {
+            "request_id": request_id,
+            "text": "로봇이 충전 거점으로 돌아갑니다.",
+            "source_language": "ko",
+            "target_language": "en",
+            "num_candidates": 1,
+        }
+        draft_resp = await client.post("/v1/drafts", json=draft_payload, headers=HEADERS_WRITER)
+        draft_body = draft_resp.json()
+        version_id = draft_body["versions"][0]["id"]
+
+        selection_resp = await client.post(
+            f"/v1/drafts/{draft_body['id']}/selection",
+            json={"version_id": version_id},
+            headers=HEADERS_WRITER,
+        )
+        assert selection_resp.status_code == 200
+
+        clear_resp = await client.delete(
+            f"/v1/drafts/{draft_body['id']}/selection",
+            headers=HEADERS_WRITER,
+        )
+
+    assert clear_resp.status_code == 200
+    clear_body = clear_resp.json()
+    assert clear_body["version_id"] is None
+    assert clear_body["request_status"] == "drafting"
 
 @pytest.mark.anyio
 async def test_comment_creation_and_resolution(seed_users):

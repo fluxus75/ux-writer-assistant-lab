@@ -4,6 +4,7 @@ import type {
   CreateDraftPayload,
   CreateRequestPayload,
   Draft,
+  DraftSelectionState,
   RequestDetail,
   RequestSummary,
   User,
@@ -120,6 +121,16 @@ export function createApproval(payload: ApprovalPayload) {
   return apiCall<ApprovalResponse>('/v1/approvals', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function selectDraftVersion(draftId: string, versionId: string) {
+  return postJSON<DraftSelectionState>(`/v1/drafts/${draftId}/selection`, { version_id: versionId });
+}
+
+export function clearDraftSelection(draftId: string) {
+  return apiCall<DraftSelectionState>(`/v1/drafts/${draftId}/selection`, {
+    method: 'DELETE',
   });
 }
 

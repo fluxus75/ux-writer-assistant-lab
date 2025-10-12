@@ -1,6 +1,5 @@
 import React from 'react';
 import { RequestCard } from '../components/RequestCard';
-import { UserSwitcher } from '../components/UserSwitcher';
 import { useUser } from '../components/UserContext';
 import { useRequests } from '../hooks/useRequests';
 import type { RequestStatus } from '../lib/types';
@@ -10,7 +9,7 @@ const FILTER_LABELS: { value: RequestStatus | 'all'; label: string }[] = [
   { value: 'drafting', label: '작성중' },
   { value: 'in_review', label: '검토중' },
   { value: 'approved', label: '승인됨' },
-  { value: 'rejected', label: '거절됨' },
+  { value: 'rejected', label: '반려됨' },
 ];
 
 export function DesignerDashboard() {
@@ -30,56 +29,40 @@ export function DesignerDashboard() {
   }
 
   return (
-    <div style={{ padding: 24, fontFamily: 'system-ui', maxWidth: 960, margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 style={{ margin: 0, fontSize: 28 }}>Designer Dashboard</h1>
-          <p style={{ marginTop: 8, color: '#6b7280' }}>{currentUser.name}님 환영합니다.</p>
+          <h1 className="text-2xl font-bold text-slate-900">디자이너 대시보드</h1>
+          <p className="mt-1 text-sm text-slate-600">환영합니다, {currentUser.name}님.</p>
         </div>
-        <UserSwitcher />
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              window.location.hash = 'create-request';
+            }}
+            className="rounded-md bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-500"
+          >
+            새 요청 생성
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void refresh();
+            }}
+            className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-primary-600 transition-colors hover:bg-slate-50"
+          >
+            새로고침
+          </button>
+        </div>
       </header>
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-        <button
-          type="button"
-          onClick={() => {
-            window.location.hash = 'create-request';
-          }}
-          style={{
-            padding: '10px 16px',
-            borderRadius: 8,
-            border: '1px solid #2563eb',
-            background: '#2563eb',
-            color: '#ffffff',
-            fontWeight: 600,
-          }}
-        >
-          새 요청 생성
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            void refresh();
-          }}
-          style={{
-            padding: '10px 16px',
-            borderRadius: 8,
-            border: '1px solid #e5e7eb',
-            background: '#ffffff',
-            color: '#2563eb',
-            fontWeight: 600,
-          }}
-        >
-          새로고침
-        </button>
-      </div>
-
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ fontSize: 14, color: '#4b5563', marginRight: 8 }}>상태 필터</label>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <label className="text-sm font-medium text-slate-600">상태 필터</label>
         <select
           value={filter}
           onChange={(event) => setFilter(event.target.value as RequestStatus | 'all')}
-          style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db' }}
+          className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
           {FILTER_LABELS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -89,10 +72,15 @@ export function DesignerDashboard() {
         </select>
       </div>
 
-      {loading && <p>요청 목록을 불러오는 중...</p>}
-      {error && <p style={{ color: '#b91c1c' }}>{error}</p>}
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-b-primary-600" />
+          요청 목록을 불러오는 중...
+        </div>
+      )}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div style={{ display: 'grid', gap: 16 }}>
+      <div className="grid gap-4">
         {filteredRequests.map((request) => (
           <RequestCard
             key={request.id}
@@ -102,7 +90,11 @@ export function DesignerDashboard() {
             }}
           />
         ))}
-        {!loading && filteredRequests.length === 0 && <p style={{ color: '#6b7280' }}>표시할 요청이 없습니다.</p>}
+        {!loading && filteredRequests.length === 0 && (
+          <div className="rounded-lg border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
+            표시할 요청이 없습니다.
+          </div>
+        )}
       </div>
     </div>
   );

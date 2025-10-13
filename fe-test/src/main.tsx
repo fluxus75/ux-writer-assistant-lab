@@ -8,6 +8,7 @@ import { useHashRoute } from './hooks/useHashRoute';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { DesignerDashboard } from './pages/DesignerDashboard';
 import { RequestCreate } from './pages/RequestCreate';
+import { RequestBatchCreate } from './pages/RequestBatchCreate';
 import { RequestDetail } from './pages/RequestDetail';
 import { WriterDashboard } from './pages/WriterDashboard';
 
@@ -26,7 +27,9 @@ function RouterView() {
   const [segment, requestId] = route.split('/');
 
   let view: React.ReactNode;
-  if (segment === 'request' && requestId) {
+  if (segment === 'request' && requestId === 'batch') {
+    view = <RequestBatchCreate />;
+  } else if (segment === 'request' && requestId) {
     view = <RequestDetail requestId={requestId} mode="view" onBack={() => (window.location.hash = '')} />;
   } else if (segment === 'work' && requestId) {
     view = <RequestDetail requestId={requestId} mode="work" onBack={() => (window.location.hash = '')} />;

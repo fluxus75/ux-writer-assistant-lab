@@ -1,7 +1,8 @@
 import React from 'react';
+import { Pagination } from '../components/Pagination';
 import { RequestCard } from '../components/RequestCard';
 import { useUser } from '../components/UserContext';
-import { useRequests } from '../hooks/useRequests';
+import { usePaginatedRequests } from '../hooks/usePaginatedRequests';
 import type { RequestStatus } from '../lib/types';
 
 const FILTER_LABELS: { value: RequestStatus | 'all'; label: string }[] = [
@@ -13,16 +14,16 @@ const FILTER_LABELS: { value: RequestStatus | 'all'; label: string }[] = [
 ];
 
 export function DesignerDashboard() {
-  const { requests, loading, error, refresh } = useRequests();
+  const { requests, pagination, loading, error, setFilters, setPage, setPageSize, refresh } = usePaginatedRequests();
   const { currentUser } = useUser();
   const [filter, setFilter] = React.useState<RequestStatus | 'all'>('all');
 
-  const filteredRequests = React.useMemo(() => {
-    if (filter === 'all') {
-      return requests;
-    }
-    return requests.filter((request) => request.status === filter);
-  }, [filter, requests]);
+  const handleFilterChange = (newFilter: RequestStatus | 'all') => {
+    setFilter(newFilter);
+    setFilters({
+      status: newFilter === 'all' ? undefined : newFilter,
+    });
+  };
 
   if (!currentUser) {
     return null;
@@ -57,19 +58,26 @@ export function DesignerDashboard() {
         </div>
       </header>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="text-sm font-medium text-slate-600">상태 필터</label>
-        <select
-          value={filter}
-          onChange={(event) => setFilter(event.target.value as RequestStatus | 'all')}
-          className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-          {FILTER_LABELS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-slate-600">상태 필터</label>
+          <select
+            value={filter}
+            onChange={(event) => handleFilterChange(event.target.value as RequestStatus | 'all')}
+            className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            {FILTER_LABELS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {pagination && (
+          <div className="text-sm text-slate-600">
+            전체 {pagination.total_count}건
+          </div>
+        )}
       </div>
 
       {loading && (
@@ -81,7 +89,7 @@ export function DesignerDashboard() {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="grid gap-4">
-        {filteredRequests.map((request) => (
+        {requests.map((request) => (
           <RequestCard
             key={request.id}
             request={request}
@@ -90,12 +98,23 @@ export function DesignerDashboard() {
             }}
           />
         ))}
-        {!loading && filteredRequests.length === 0 && (
+        {!loading && requests.length === 0 && (
           <div className="rounded-lg border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
             표시할 요청이 없습니다.
           </div>
         )}
       </div>
+
+      {pagination && pagination.total_pages > 1 && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.total_pages}
+          onPageChange={setPage}
+          pageSize={pagination.page_size}
+          onPageSizeChange={setPageSize}
+          totalCount={pagination.total_count}
+        />
+      )}
     </div>
   );
 }

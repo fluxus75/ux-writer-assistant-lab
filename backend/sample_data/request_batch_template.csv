@@ -1,0 +1,11 @@
+title,feature_name,context_description,source_text,tone,style_preferences,device
+"청소 시작 버튼","Start Cleaning","사용자가 버튼을 눌러 청소 시작","청소를 시작합니다","friendly","concise","robot_vacuum"
+"충전 복귀","Return to Charge","배터리 부족 시 자동 충전소 복귀","충전소로 돌아갑니다","informative","brief","robot_vacuum"
+"일시정지","Pause Cleaning","청소 중 일시정지 기능","청소를 일시정지합니다","neutral","short","robot_vacuum"
+"청소 완료","Cleaning Complete","청소 완료 후 알림 메시지","청소가 완료되었습니다","positive","friendly","robot_vacuum"
+"장애물 감지","Obstacle Detected","장애물 감지 시 알림","장애물이 감지되었습니다","warning","clear","robot_vacuum"
+"공기질 양호","Air Quality Good","공기 청정 후 상태 알림","현재 공기질이 양호합니다","positive","reassuring","air_purifier"
+"필터 교체 알림","Replace Filter","필터 교체 시기 알림","필터를 교체해주세요","neutral","actionable","air_purifier"
+"자동 모드 실행","Auto Mode On","자동 모드 시작 시 메시지","자동 모드로 실행 중입니다","informative","brief","air_purifier"
+"조용한 모드","Quiet Mode","조용한 모드 활성화 알림","조용한 모드가 켜졌습니다","gentle","short","air_purifier"
+"에러 발생","System Error","시스템 오류 발생 시 알림","오류가 발생했습니다. 고객센터에 문의하세요","urgent","helpful","robot_vacuum"

@@ -1,5 +1,5 @@
 import React from 'react';
-import { translate, TranslateRequest, TranslateResponse } from '../lib/api';
+import { translate, TranslateRequest, TranslateResponse, RetrievalItem } from '../lib/api';
 
 function splitCommaInput(input: string): string[] {
   return input
@@ -60,6 +60,7 @@ export function Translate() {
     const options: NonNullable<TranslateRequest['options']> = {
       use_rag: useRag,
       guardrails,
+      num_candidates: 3,
     };
     const ragValue = Number(ragTopK);
     if (!Number.isNaN(ragValue) && ragTopK.trim()) {
@@ -225,7 +226,7 @@ export function Translate() {
 
           <MetadataBlock title="LLM Metadata" data={resp.metadata.llm} />
           <MetadataBlock title="Guardrails" data={resp.metadata.guardrails} />
-          <MetadataBlock title="Retrieval" data={resp.metadata.retrieval} />
+          <RetrievalExamples retrieval={resp.metadata.retrieval} />
 
           <section className="space-y-2">
             <h4 className="text-sm font-semibold text-slate-700">Candidates</h4>
@@ -284,6 +285,59 @@ function MetadataBlock({ title, data }: { title: string; data: unknown }) {
       <pre className="max-h-64 overflow-auto rounded-lg border border-slate-200 bg-slate-900 p-4 text-xs text-slate-100">
         {JSON.stringify(data, null, 2)}
       </pre>
+    </section>
+  );
+}
+
+function RetrievalExamples({ retrieval }: { retrieval: { items: RetrievalItem[]; latency_ms: number } }) {
+  const hasItems = retrieval.items && retrieval.items.length > 0;
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-slate-700">Retrieval Examples</h4>
+        <span className="text-xs text-slate-500">{retrieval.latency_ms}ms</span>
+      </div>
+
+      {hasItems ? (
+        <div className="space-y-3">
+          {retrieval.items.map((item, index) => (
+            <div
+              key={index}
+              className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4"
+            >
+              {item.user_utterance && (
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    User Utterance
+                  </p>
+                  <p className="text-sm text-slate-700">{item.user_utterance}</p>
+                </div>
+              )}
+
+              {item.response_case && (
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Context
+                  </p>
+                  <p className="text-sm text-slate-700">{item.response_case}</p>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Response
+                </p>
+                <p className="text-sm font-medium text-slate-900">{item.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+          No retrieval examples found
+        </p>
+      )}
     </section>
   );
 }

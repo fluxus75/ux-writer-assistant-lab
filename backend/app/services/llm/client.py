@@ -24,6 +24,7 @@ class PromptRequest:
     messages: List[PromptMessage]
     temperature: Optional[float] = None
     max_output_tokens: Optional[int] = None
+    n: Optional[int] = None
 
 
 @dataclass(slots=True)
@@ -31,6 +32,12 @@ class LLMResult:
     text: str
     latency_ms: float
     raw: object
+    candidates: List[str] = None  # Multiple candidates when n > 1
+
+    def __post_init__(self):
+        # If candidates not provided, use text as single candidate
+        if self.candidates is None:
+            object.__setattr__(self, 'candidates', [self.text])
 
 
 class LLMClient(Protocol):
@@ -73,6 +80,7 @@ class OpenAIChatClient:
                 messages=[{"role": m.role, "content": m.content} for m in prompt.messages],
                 temperature=prompt.temperature if prompt.temperature is not None else self._default_temperature,
                 max_tokens=prompt.max_output_tokens,
+                n=prompt.n if prompt.n is not None else 1,
             )
         except (APIError, OpenAIError) as exc:  # pragma: no cover - network error path
             raise LLMClientError(str(exc)) from exc
@@ -80,5 +88,14 @@ class OpenAIChatClient:
             raise LLMClientError(str(exc)) from exc
 
         elapsed_ms = (perf_counter() - start) * 1000.0
-        text = completion.choices[0].message.content if completion.choices else ""
-        return LLMResult(text=text or "", latency_ms=elapsed_ms, raw=completion)
+
+        # Extract all candidates from choices
+        candidates = []
+        for choice in completion.choices:
+            if choice.message.content:
+                candidates.append(choice.message.content)
+
+        # First candidate as primary text (for backward compatibility)
+        text = candidates[0] if candidates else ""
+
+        return LLMResult(text=text, latency_ms=elapsed_ms, raw=completion, candidates=candidates)

@@ -1,10 +1,12 @@
 import React from 'react';
 import { useUser } from '../components/UserContext';
-import { createRequest } from '../lib/api';
+import { createRequest, getDevices, type Device } from '../lib/api';
 import type { CreateRequestPayload } from '../lib/types';
 
 export function RequestCreate() {
   const { currentUser, availableUsers } = useUser();
+  const [devices, setDevices] = React.useState<Device[]>([]);
+  const [loadingDevices, setLoadingDevices] = React.useState(true);
   const [form, setForm] = React.useState<CreateRequestPayload>({
     title: '',
     feature_name: '',
@@ -14,8 +16,24 @@ export function RequestCreate() {
     style_preferences: '',
     assigned_writer_id: '',
   });
+  const [selectedDevice, setSelectedDevice] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Load devices
+  React.useEffect(() => {
+    const loadDevices = async () => {
+      try {
+        const result = await getDevices(false); // Only active devices
+        setDevices(result);
+      } catch (err) {
+        console.error('Failed to load devices:', err);
+      } finally {
+        setLoadingDevices(false);
+      }
+    };
+    void loadDevices();
+  }, []);
 
   if (!currentUser || currentUser.role !== 'designer') {
     return (
@@ -48,7 +66,7 @@ export function RequestCreate() {
         source_text: form.source_text || undefined,
         tone: form.tone || undefined,
         style_preferences: form.style_preferences || undefined,
-        constraints: undefined,
+        constraints: selectedDevice ? { device: selectedDevice } : undefined,
         assigned_writer_id: form.assigned_writer_id || undefined,
       };
       const created = await createRequest(payload);
@@ -93,16 +111,40 @@ export function RequestCreate() {
           </div>
 
           <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700">디바이스</label>
+            <select
+              value={selectedDevice}
+              onChange={(event) => setSelectedDevice(event.target.value)}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              disabled={loadingDevices}
+            >
+              <option value="">선택 안 함</option>
+              {devices.map((device) => (
+                <option key={device.id} value={device.id}>
+                  {device.display_name_ko}
+                </option>
+              ))}
+            </select>
+            {loadingDevices && <p className="text-xs text-slate-500">디바이스 목록 로딩 중...</p>}
+            <p className="text-xs text-slate-500">
+              디바이스를 선택하면 feature_norm이 자동으로 생성됩니다
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700">
               기능 <span className="text-red-500">*</span>
             </label>
             <input
               value={form.feature_name}
               onChange={(event) => handleChange('feature_name', event.target.value)}
-              placeholder="Example: Account settings"
+              placeholder="예: 충전 복귀, 청소 시작"
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               required
             />
+            <p className="text-xs text-slate-500">
+              한글로 입력하면 자동으로 영문 식별자로 변환됩니다 (예: "충전 복귀" → "return_to_charging")
+            </p>
           </div>
 
           <div className="space-y-2">

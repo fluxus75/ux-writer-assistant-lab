@@ -70,16 +70,21 @@ def _collect_rules(run_id: Optional[str]) -> Dict[str, Any]:
     return {}
 
 
-def _context_examples(ids: List[str]) -> List[str]:
+def _context_examples(ids: List[str]) -> List[Dict[str, str]]:
+    """Extract context examples with user_utterance and response_case metadata."""
     if not ids:
         return []
     lookup = set(ids)
-    examples: List[str] = []
+    examples: List[Dict[str, str]] = []
     for row in state.CONTEXT:
         if row.get("id") in lookup:
-            candidate = row.get("en_line") or row.get("ko_response")
-            if candidate:
-                examples.append(str(candidate))
+            text = row.get("en_line") or row.get("ko_response")
+            if text:
+                examples.append({
+                    "text": str(text),
+                    "user_utterance": str(row.get("user_utterance", "")),
+                    "response_case": str(row.get("response_case_raw", "")),
+                })
     return examples
 
 
@@ -92,18 +97,17 @@ def translate(
     options = request.options
 
     retrieval_debug: Dict[str, Any] = {"items": [], "latency_ms": 0, "mode": None, "feature_confidence": 0.0, "novelty_mode": False}
-    retrieval_examples: List[str] = []
+    retrieval_examples_with_context: List[Dict[str, str]] = []
     if options.use_rag:
         rag_filters: Dict[str, Any] = {}
         if options.device:
             rag_filters["device"] = options.device
         if options.feature_norm:
             rag_filters["feature_norm"] = options.feature_norm
-        if options.style_tag:
-            rag_filters["style_tag"] = options.style_tag
+        # Note: style_tag is no longer used for RAG filtering (kept as metadata only)
         if not rag_filters and request_context and request_context.constraints_json:
             constraints = request_context.constraints_json or {}
-            for key in ("device", "feature_norm", "style_tag"):
+            for key in ("device", "feature_norm"):
                 value = constraints.get(key)
                 if value:
                     rag_filters[key] = value
@@ -114,10 +118,25 @@ def translate(
                 filters=rag_filters,
                 top_k=max(1, options.rag_top_k),
             )
-        retrieval_examples = [item.get("en_line", "") for item in retrieval_debug.get("items", []) if item.get("en_line")]
+        # Extract simple text examples from RAG results (no context available for style_guides)
+        for item in retrieval_debug.get("items", []):
+            if item.get("en_line"):
+                retrieval_examples_with_context.append({
+                    "text": item["en_line"],
+                    "user_utterance": "",
+                    "response_case": "",
+                })
 
-    # Include explicit context examples even when RAG is disabled.
-    retrieval_examples.extend(_context_examples(request.context_ids))
+    # Include explicit context examples with full context metadata
+    retrieval_examples_with_context.extend(_context_examples(request.context_ids))
+
+    num_candidates = max(1, min(options.num_candidates, 5))
+
+    # Build prompt with appropriate temperature for diversity
+    # Use higher temperature when generating multiple candidates
+    candidate_temperature = options.temperature
+    if candidate_temperature is None and num_candidates > 1:
+        candidate_temperature = 0.7
 
     prompt = build_prompt(
         TranslationPromptParams(
@@ -127,28 +146,31 @@ def translate(
             tone=options.tone,
             style_guides=options.style_guides,
             glossary_hints=request.glossary,
-            retrieval_examples=retrieval_examples,
+            retrieval_examples_with_context=retrieval_examples_with_context,
             max_output_tokens=options.max_output_tokens,
-            temperature=options.temperature,
+            temperature=candidate_temperature,
         )
     )
 
+    # Add n parameter to prompt request for multiple candidates
+    prompt.n = num_candidates
+
+    # Single LLM call with n parameter to generate multiple candidates
     client = get_llm_client()
     try:
         llm_result = client.generate(prompt)
     except LLMClientError as exc:  # pragma: no cover - network error path exercised via tests mocks
         raise TranslationServiceError(str(exc)) from exc
 
-    base_text = llm_result.text.strip() or request.text.strip()
-    num_candidates = max(1, min(options.num_candidates, 5))
-    candidate_texts: List[str] = []
-    for idx in range(num_candidates):
-        if idx == 0:
-            candidate_texts.append(base_text)
-        elif idx == 1 and base_text.endswith("."):
-            candidate_texts.append(base_text)
-        else:
-            candidate_texts.append(base_text)
+    # Extract all candidates from result
+    candidate_texts = [text.strip() for text in llm_result.candidates if text.strip()]
+
+    # Ensure we have at least one candidate
+    if not candidate_texts:
+        candidate_texts.append(request.text.strip())
+
+    base_text = candidate_texts[0]
+    total_latency_ms = llm_result.latency_ms
 
     rules: Dict[str, Any] = {}
     if options.guardrails:
@@ -184,8 +206,9 @@ def translate(
 
     metadata = {
         "llm": {
-            "latency_ms": llm_result.latency_ms,
+            "latency_ms": total_latency_ms,
             "model": settings.llm_model,
+            "num_candidates": len(candidate_texts),
         },
         "retrieval": retrieval_debug,
         "guardrails": selected_guardrail,

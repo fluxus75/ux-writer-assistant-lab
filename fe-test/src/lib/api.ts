@@ -63,6 +63,7 @@ export interface TranslateOptions {
   guardrails?: boolean;
   temperature?: number;
   max_output_tokens?: number;
+  num_candidates?: number;
 }
 
 export interface TranslateRequest {
@@ -80,13 +81,20 @@ export interface TranslationCandidate {
   text: string;
 }
 
+export interface RetrievalItem {
+  text: string;
+  user_utterance?: string;
+  response_case?: string;
+  [key: string]: unknown;
+}
+
 export interface TranslateResponse {
   selected: string;
   candidates: TranslationCandidate[];
   rationale: string;
   metadata: {
     llm: { latency_ms: number; model: string };
-    retrieval: { items: unknown[]; latency_ms: number };
+    retrieval: { items: RetrievalItem[]; latency_ms: number };
     guardrails: { passes: boolean; violations: string[]; fixed: string };
   };
 }
@@ -132,6 +140,64 @@ export function clearDraftSelection(draftId: string) {
   return apiCall<DraftSelectionState>(`/v1/drafts/${draftId}/selection`, {
     method: 'DELETE',
   });
+}
+
+// Device Taxonomy API
+export interface Device {
+  id: string;
+  display_name_ko: string;
+  display_name_en: string;
+  category?: string;
+  active: boolean;
+}
+
+export interface CreateDevicePayload {
+  id: string;
+  display_name_ko: string;
+  display_name_en: string;
+  category?: string;
+}
+
+export interface UpdateDevicePayload {
+  display_name_ko?: string;
+  display_name_en?: string;
+  category?: string;
+  active?: boolean;
+}
+
+export function getDevices(includeInactive = false) {
+  return apiCall<Device[]>(`/v1/admin/devices?include_inactive=${includeInactive}`);
+}
+
+export function createDevice(payload: CreateDevicePayload) {
+  return postJSON<Device>('/v1/admin/devices', payload);
+}
+
+export function updateDevice(deviceId: string, payload: UpdateDevicePayload) {
+  return apiCall<Device>(`/v1/admin/devices/${deviceId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteDevice(deviceId: string, hardDelete = false) {
+  return apiCall<void>(`/v1/admin/devices/${deviceId}?hard_delete=${hardDelete}`, {
+    method: 'DELETE',
+  });
+}
+
+// Feature Normalization API
+export interface NormalizeFeaturePayload {
+  feature_name: string;
+  device: string;
+}
+
+export interface NormalizeFeatureResponse {
+  feature_norm: string;
+}
+
+export function normalizeFeature(payload: NormalizeFeaturePayload) {
+  return postJSON<NormalizeFeatureResponse>('/v1/taxonomy/normalize-feature', payload);
 }
 
 export type { User };

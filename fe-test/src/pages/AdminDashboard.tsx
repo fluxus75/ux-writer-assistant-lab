@@ -1,6 +1,7 @@
 import React from 'react';
 import { useRequests } from '../hooks/useRequests';
 import type { RequestStatus } from '../lib/types';
+import { DeviceManagement } from './DeviceManagement';
 import { Ingest } from './Ingest';
 import { Retrieve } from './Retrieve';
 import { Translate } from './Translate';
@@ -15,7 +16,7 @@ const STATUS_LABELS: Record<RequestStatus, string> = {
 
 type AdminDashboardProps = {
   initialSection?: 'overview' | 'system';
-  initialSystemTab?: 'ingest' | 'retrieve' | 'translate';
+  initialSystemTab?: 'ingest' | 'retrieve' | 'translate' | 'devices';
 };
 
 export function AdminDashboard({
@@ -23,7 +24,7 @@ export function AdminDashboard({
   initialSystemTab = 'ingest',
 }: AdminDashboardProps) {
   const [activeSection, setActiveSection] = React.useState<'overview' | 'system'>(initialSection);
-  const [systemTab, setSystemTab] = React.useState<'ingest' | 'retrieve' | 'translate'>(initialSystemTab);
+  const [systemTab, setSystemTab] = React.useState<'ingest' | 'retrieve' | 'translate' | 'devices'>(initialSystemTab);
 
   React.useEffect(() => {
     setActiveSection(initialSection);
@@ -187,8 +188,8 @@ function SystemTools({
   tab,
   onChangeTab,
 }: {
-  tab: 'ingest' | 'retrieve' | 'translate';
-  onChangeTab: (tab: 'ingest' | 'retrieve' | 'translate') => void;
+  tab: 'ingest' | 'retrieve' | 'translate' | 'devices';
+  onChangeTab: (tab: 'ingest' | 'retrieve' | 'translate' | 'devices') => void;
 }) {
   return (
     <div className="space-y-6">
@@ -198,7 +199,7 @@ function SystemTools({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {(['ingest', 'retrieve', 'translate'] as const).map((value) => (
+        {(['ingest', 'retrieve', 'translate', 'devices'] as const).map((value) => (
           <button
             key={value}
             type="button"
@@ -212,6 +213,7 @@ function SystemTools({
             {value === 'ingest' && '수집'}
             {value === 'retrieve' && '검색'}
             {value === 'translate' && '번역'}
+            {value === 'devices' && '디바이스'}
           </button>
         ))}
       </div>
@@ -220,6 +222,7 @@ function SystemTools({
         {tab === 'ingest' && <Ingest />}
         {tab === 'retrieve' && <Retrieve />}
         {tab === 'translate' && <Translate />}
+        {tab === 'devices' && <DeviceManagement />}
       </div>
     </div>
   );

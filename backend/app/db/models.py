@@ -108,6 +108,19 @@ class RagSourceType(str, Enum):
     CONTEXT = "context"
 
 
+class DeviceTaxonomy(Base):
+    """Managed taxonomy for device identifiers."""
+
+    __tablename__ = "device_taxonomy"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    display_name_ko: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name_en: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[Optional[str]] = mapped_column(String(64))
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class ExportFormat(str, Enum):
     CSV = "csv"
     DOCX = "docx"
@@ -320,6 +333,7 @@ __all__ = [
     "RagIngestion",
     "ExportJob",
     "AuditLog",
+    "DeviceTaxonomy",
     "UserRole",
     "RequestStatus",
     "DraftGenerationMethod",

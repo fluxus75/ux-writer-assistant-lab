@@ -87,6 +87,22 @@ def create_request(
         assigned_writer = session.get(models.User, payload.assigned_writer_id)
         if not assigned_writer:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assigned writer not found")
+
+    # Auto-normalize feature_norm if device is provided but feature_norm is not
+    constraints = payload.constraints or {}
+    if constraints.get("device") and not constraints.get("feature_norm"):
+        from app.services.taxonomy import normalize_feature_name
+        try:
+            feature_norm = normalize_feature_name(
+                payload.feature_name,
+                constraints["device"],
+                session,
+            )
+            constraints["feature_norm"] = feature_norm
+        except Exception:
+            # If normalization fails, continue without feature_norm
+            pass
+
     try:
         request_obj = request_service.create_request(
             session,
@@ -97,7 +113,7 @@ def create_request(
             source_text=payload.source_text,
             tone=payload.tone,
             style_preferences=payload.style_preferences,
-            constraints=payload.constraints,
+            constraints=constraints,
             assigned_writer=assigned_writer,
         )
     except ValueError as exc:

@@ -17,6 +17,7 @@ class TranslationPromptParams:
     style_guides: Iterable[str] = field(default_factory=tuple)
     glossary_hints: Dict[str, str] = field(default_factory=dict)
     retrieval_examples: Iterable[str] = field(default_factory=tuple)
+    retrieval_examples_with_context: Iterable[Dict[str, str]] = field(default_factory=tuple)
     max_output_tokens: Optional[int] = None
     temperature: Optional[float] = None
 
@@ -40,7 +41,17 @@ def build_prompt(params: TranslationPromptParams) -> PromptRequest:
         glossary_lines = [f"{src} -> {tgt}" for src, tgt in sorted(params.glossary_hints.items())]
         system_parts.append("Use glossary terms when applicable:" + "\n" + "\n".join(glossary_lines))
 
-    if params.retrieval_examples:
+    if params.retrieval_examples_with_context:
+        context_lines = []
+        for idx, ex in enumerate(params.retrieval_examples_with_context, 1):
+            context_lines.append(f"\nExample {idx}:")
+            if ex.get("user_utterance"):
+                context_lines.append(f"  User said: \"{ex['user_utterance']}\"")
+            if ex.get("response_case"):
+                context_lines.append(f"  Context: {ex['response_case']}")
+            context_lines.append(f"  Response: {ex['text']}")
+        system_parts.append("Reference these contextual examples for consistency:" + "".join(context_lines))
+    elif params.retrieval_examples:
         example_lines = "\n".join(f"- {ex}" for ex in params.retrieval_examples)
         system_parts.append("Reference these examples for consistency:\n" + example_lines)
 

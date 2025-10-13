@@ -191,14 +191,34 @@ def retrieve(
     top_k: int = 5,
     mode: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """
+    Tiered retrieval with graceful filter degradation.
+
+    Tier 1: Full filters (device + feature_norm)
+    Tier 2: Device only
+    Tier 3: No filters (semantic only)
+    """
     start = time.time()
     normalized_filters = filters.copy() if filters else {}
     feature_conf = _feature_confidence(session, normalized_filters.get("feature_norm"))
     if mode is None:
         mode = "feature" if feature_conf >= 0.6 else "style"
 
+    # Try Tier 1: Full filters
     entries = _base_style_query(session, normalized_filters)
-    
+    tier = 1
+
+    # Tier 2: If no results and feature_norm was specified, try device-only
+    if not entries and normalized_filters.get("feature_norm"):
+        tier = 2
+        relaxed_filters = {"device": normalized_filters.get("device")} if normalized_filters.get("device") else {}
+        entries = _base_style_query(session, relaxed_filters)
+
+    # Tier 3: If still no results, remove all filters
+    if not entries:
+        tier = 3
+        entries = _base_style_query(session, {})
+
     if mode == "feature" and not entries:
         mode = "style"
 
@@ -221,7 +241,6 @@ def retrieve(
                     filters={
                         "device": normalized_filters.get("device"),
                         "feature_norm": normalized_filters.get("feature_norm"),
-                        "style_tag": normalized_filters.get("style_tag"),
                     },
                 )
                 vector_scores = {sid: score for sid, score, _, _ in vector_results}
@@ -277,7 +296,6 @@ def retrieve(
                 top_k=max(top_k * 5, 40),
                 filters={
                     "device": normalized_filters.get("device"),
-                    "style_tag": normalized_filters.get("style_tag"),
                 },
                 with_vectors=True,
             )
@@ -337,6 +355,7 @@ def retrieve(
         "feature_confidence": feature_conf,
         "novelty_mode": mode != "feature",
         "candidate_count": len(results),
+        "tier": tier,  # Include tier information for debugging
     }
 
 

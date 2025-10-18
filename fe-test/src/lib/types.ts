@@ -127,3 +127,16 @@ export interface DraftSelectionState {
   comment_id?: string | null;
   new_version_created?: boolean;
 }
+
+export type CommentStatus = 'open' | 'resolved';
+
+export interface Comment {
+  id: string;
+  request_id: string;
+  draft_version_id?: string | null;
+  author_id: string;
+  body: string;
+  status: CommentStatus;
+  created_at: string;
+  resolved_at?: string | null;
+}

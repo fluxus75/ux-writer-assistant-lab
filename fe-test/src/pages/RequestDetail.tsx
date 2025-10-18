@@ -10,9 +10,10 @@ import {
   createApproval,
   generateDraft,
   getRequest,
+  getRequestComments,
   selectDraftVersion,
 } from '../lib/api';
-import type { DraftSelectionPayload, DraftVersion, RequestDetail as RequestDetailType } from '../lib/types';
+import type { Comment, DraftSelectionPayload, DraftVersion, RequestDetail as RequestDetailType } from '../lib/types';
 
 interface RequestDetailProps {
   requestId: string;
@@ -38,6 +39,9 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
     version: DraftVersion | null;
   }>({ isOpen: false, draftId: '', version: null });
 
+  const [comments, setComments] = React.useState<Comment[]>([]);
+  const [commentsLoading, setCommentsLoading] = React.useState(false);
+
   const fetchRequest = React.useCallback(async () => {
     try {
       setLoading(true);
@@ -53,9 +57,22 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
     }
   }, [requestId, resetDrafts]);
 
+  const fetchComments = React.useCallback(async () => {
+    try {
+      setCommentsLoading(true);
+      const response = await getRequestComments(requestId);
+      setComments(response.items);
+    } catch (err) {
+      console.error('Failed to load comments:', err);
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [requestId]);
+
   React.useEffect(() => {
     void fetchRequest();
-  }, [fetchRequest]);
+    void fetchComments();
+  }, [fetchRequest, fetchComments]);
 
   const handleGenerateDraft = React.useCallback(async () => {
     if (!request) {
@@ -100,11 +117,13 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
         const response = await createApproval({ request_id: request.id, decision, comment });
         setRequest({ ...request, status: response.request_status });
         alert(`Request ${decision === 'approved' ? 'approved' : 'sent back for revisions'}.`);
+        // Refresh comments to show new approval comment
+        await fetchComments();
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Failed to update request.');
       }
     },
-    [request],
+    [request, fetchComments],
   );
 
   const handleOpenSelectionModal = React.useCallback((draftId: string, version: DraftVersion) => {
@@ -131,13 +150,14 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
         // Success - close modal
         setSelectionModal({ isOpen: false, draftId: '', version: null });
 
-        // Optionally refresh request to get updated drafts
+        // Refresh request and comments to get updated drafts and comments
         await fetchRequest();
+        await fetchComments();
       } catch (err) {
         throw err; // Let modal handle error display
       }
     },
-    [selectionModal.draftId, setDraftSelection, fetchRequest],
+    [selectionModal.draftId, setDraftSelection, fetchRequest, fetchComments],
   );
 
   const handleCancelSelection = React.useCallback(() => {
@@ -370,6 +390,60 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
           onOpenSelectionModal={handleOpenSelectionModal}
           onClearSelection={handleClearSelection}
         />
+      </section>
+
+      {/* Activity Timeline / Comments */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">활동 기록</h2>
+          <p className="text-sm text-slate-600">요청과 관련된 모든 코멘트와 피드백을 확인하세요.</p>
+        </div>
+        {commentsLoading ? (
+          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-b-primary-600" />
+            코멘트를 불러오는 중...
+          </div>
+        ) : comments.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-200 bg-white py-8 text-center text-sm text-slate-500">
+            아직 코멘트가 없습니다.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {comments.map((comment) => {
+              const draft = comment.draft_version_id
+                ? drafts.find((d) => d.versions.some((v) => v.id === comment.draft_version_id))
+                : null;
+              const version = draft?.versions.find((v) => v.id === comment.draft_version_id);
+
+              return (
+                <div
+                  key={comment.id}
+                  className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="mb-2 flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-900">작성자 ID: {comment.author_id}</span>
+                      <span className="text-xs text-slate-500">
+                        {new Date(comment.created_at).toLocaleString('ko-KR')}
+                      </span>
+                    </div>
+                    {comment.status === 'resolved' && (
+                      <span className="rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
+                        해결됨
+                      </span>
+                    )}
+                  </div>
+                  {version && (
+                    <div className="mb-2 text-xs text-slate-600">
+                      드래프트 버전 {version.version_index}에 대한 코멘트
+                    </div>
+                  )}
+                  <p className="text-sm leading-relaxed text-slate-700">{comment.body}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* Draft Selection Modal */}

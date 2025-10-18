@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db import models
 from app.services.audit.service import record_audit_event
+from app.services.comments.service import create_comment
 
 
 def record_decision(
@@ -37,6 +38,17 @@ def record_decision(
     session.add(request)
     session.flush()
     session.refresh(approval)
+
+    # Create Comment model for unified comment retrieval
+    if comment and comment.strip():
+        create_comment(
+            session,
+            request=request,
+            author=actor,
+            body=comment.strip(),
+            draft_version=None,
+        )
+
     record_audit_event(
         session,
         entity_type="request",

@@ -1,6 +1,7 @@
 import type {
   ApprovalPayload,
   ApprovalResponse,
+  Comment,
   CreateDraftPayload,
   CreateRequestPayload,
   Draft,
@@ -8,6 +9,7 @@ import type {
   DraftSelectionState,
   RequestDetail,
   RequestSummary,
+  RequestStatus,
   User,
 } from './types';
 import { loadUser } from './userStorage';
@@ -299,4 +301,11 @@ export function cancelRequest(requestId: string, payload: CancelRequestPayload =
   return postJSON<CancelRequestResponse>(`/v1/requests/${requestId}/cancel`, payload);
 }
 
-export type { User };
+// Comments API
+export interface CommentListResponse {
+  items: Comment[];
+}
+
+export function getRequestComments(requestId: string) {
+  return apiCall<CommentListResponse>(`/v1/requests/${requestId}/comments`);
+}

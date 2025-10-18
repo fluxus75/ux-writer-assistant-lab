@@ -284,4 +284,19 @@ export function getUsers() {
   return apiCall<User[]>('/v1/admin/users');
 }
 
+// Cancel Request
+export interface CancelRequestPayload {
+  reason?: string;
+}
+
+export interface CancelRequestResponse {
+  id: string;
+  status: RequestStatus;
+  message: string;
+}
+
+export function cancelRequest(requestId: string, payload: CancelRequestPayload = {}) {
+  return postJSON<CancelRequestResponse>(`/v1/requests/${requestId}/cancel`, payload);
+}
+
 export type { User };

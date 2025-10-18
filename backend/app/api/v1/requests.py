@@ -58,6 +58,7 @@ class RequestSummary(BaseModel):
     title: str
     feature_name: str
     status: models.RequestStatus
+    requested_by: str
     assigned_writer_id: Optional[str]
     created_at: datetime
     updated_at: datetime
@@ -162,6 +163,7 @@ def create_request(
         title=request_obj.title,
         feature_name=request_obj.feature_name,
         status=request_obj.status,
+        requested_by=request_obj.requested_by,
         assigned_writer_id=request_obj.assigned_writer_id,
         created_at=request_obj.created_at,
         updated_at=request_obj.updated_at,
@@ -233,6 +235,7 @@ def list_requests(
                 title=record.title,
                 feature_name=record.feature_name,
                 status=record.status,
+                requested_by=record.requested_by,
                 assigned_writer_id=record.assigned_writer_id,
                 created_at=record.created_at,
                 updated_at=record.updated_at,
@@ -291,6 +294,7 @@ def get_request(
         title=record.title,
         feature_name=record.feature_name,
         status=record.status,
+        requested_by=record.requested_by,
         assigned_writer_id=record.assigned_writer_id,
         created_at=record.created_at,
         updated_at=record.updated_at,
@@ -519,12 +523,61 @@ def get_request_statistics(
     )
 
 
+class CancelRequestPayload(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
+class CancelRequestResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    status: models.RequestStatus
+    message: str
+
+
+@router.post("/requests/{request_id}/cancel", response_model=CancelRequestResponse)
+def cancel_request(
+    request_id: str,
+    payload: CancelRequestPayload,
+    session: Session = Depends(get_db_session),
+    user: models.User = Depends(current_user(models.UserRole.DESIGNER)),
+):
+    """
+    Cancel a request. Only the designer who created the request can cancel it.
+
+    Can only cancel requests in DRAFTING or NEEDS_REVISION status.
+    """
+    # Get the request
+    request_obj = request_service.get_request(session, request_id)
+    if not request_obj:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
+
+    # Cancel the request
+    try:
+        updated_request = request_service.cancel_request(
+            session,
+            request=request_obj,
+            cancelled_by=user,
+            reason=payload.reason,
+        )
+        session.commit()
+
+        return CancelRequestResponse(
+            id=updated_request.id,
+            status=updated_request.status,
+            message="Request cancelled successfully",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
 __all__ = [
     "create_request",
     "create_batch_requests",
     "list_requests",
     "get_request",
     "get_request_statistics",
+    "cancel_request",
     "router",
 ]
 

@@ -25,6 +25,7 @@ class RequestStatus(str, Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
     NEEDS_REVISION = "needs_revision"
+    CANCELLED = "cancelled"
 
 
 class DraftGenerationMethod(str, Enum):

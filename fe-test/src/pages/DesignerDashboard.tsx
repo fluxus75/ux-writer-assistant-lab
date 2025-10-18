@@ -12,6 +12,7 @@ const FILTER_LABELS: { value: RequestStatus | 'all'; label: string }[] = [
   { value: 'in_review', label: '검토중' },
   { value: 'approved', label: '승인됨' },
   { value: 'rejected', label: '반려됨' },
+  { value: 'cancelled', label: '취소됨' },
 ];
 
 export function DesignerDashboard() {

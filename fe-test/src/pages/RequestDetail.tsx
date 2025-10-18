@@ -5,6 +5,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { useUser } from '../components/UserContext';
 import { useDrafts } from '../hooks/useDrafts';
 import {
+  cancelRequest,
   clearDraftSelection,
   createApproval,
   generateDraft,
@@ -156,6 +157,25 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
     [setDraftSelection],
   );
 
+  const handleCancelRequest = React.useCallback(async () => {
+    if (!request) {
+      return;
+    }
+    const reason =
+      window.prompt('요청을 취소하는 이유를 입력하세요 (선택사항):') ?? undefined;
+
+    if (window.confirm('정말 이 요청을 취소하시겠습니까?')) {
+      try {
+        const response = await cancelRequest(request.id, { reason });
+        setRequest({ ...request, status: response.status });
+        alert('요청이 취소되었습니다.');
+        onBack(); // Return to list
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Failed to cancel request.');
+      }
+    }
+  }, [request, onBack]);
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -187,6 +207,11 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
     (request.status === 'drafting' || request.status === 'needs_revision');
   const canReview =
     mode === 'view' && currentUser?.role === 'designer' && request.status === 'in_review';
+  const canCancel =
+    mode === 'view' &&
+    currentUser?.role === 'designer' &&
+    currentUser?.id === request.requested_by &&
+    (request.status === 'drafting' || request.status === 'needs_revision');
 
   return (
     <div className="space-y-8">
@@ -310,6 +335,22 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
               변경 요청
             </button>
           </div>
+        </section>
+      )}
+
+      {canCancel && (
+        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <header className="mb-4 space-y-1">
+            <h2 className="text-lg font-semibold text-slate-900">요청 취소</h2>
+            <p className="text-sm text-slate-600">작업 전에 요청을 취소할 수 있습니다.</p>
+          </header>
+          <button
+            type="button"
+            onClick={() => void handleCancelRequest()}
+            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            요청 취소
+          </button>
         </section>
       )}
 

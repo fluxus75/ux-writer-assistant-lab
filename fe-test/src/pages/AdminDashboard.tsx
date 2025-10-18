@@ -6,13 +6,14 @@ import { Ingest } from './Ingest';
 import { Retrieve } from './Retrieve';
 import { Translate } from './Translate';
 
-const STATUS_ORDER: RequestStatus[] = ['drafting', 'needs_revision', 'in_review', 'approved', 'rejected'];
+const STATUS_ORDER: RequestStatus[] = ['drafting', 'needs_revision', 'in_review', 'approved', 'rejected', 'cancelled'];
 const STATUS_LABELS: Record<RequestStatus, string> = {
   drafting: '작성중',
   needs_revision: '재작업 필요',
   in_review: '검토중',
   approved: '승인됨',
   rejected: '반려됨',
+  cancelled: '취소됨',
 };
 
 type AdminDashboardProps = {
@@ -105,6 +106,7 @@ function AdminOverview() {
       in_review: 0,
       approved: 0,
       rejected: 0,
+      cancelled: 0,
     };
     requests.forEach((request) => {
       counts[request.status] += 1;

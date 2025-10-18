@@ -89,5 +89,45 @@ def reassign_writer(
     session.add(request)
 
 
-__all__ = ["create_request", "list_requests", "get_request", "reassign_writer"]
+def cancel_request(
+    session: Session,
+    *,
+    request: models.Request,
+    cancelled_by: models.User,
+    reason: str | None = None,
+) -> models.Request:
+    """Cancel a request. Only the designer who created it can cancel."""
+
+    # Validate user is a designer
+    if cancelled_by.role != models.UserRole.DESIGNER:
+        raise ValueError("Only designers can cancel requests")
+
+    # Validate user is the original requester
+    if request.requested_by != cancelled_by.id:
+        raise ValueError("You can only cancel your own requests")
+
+    # Validate request is in cancellable state
+    if request.status not in {models.RequestStatus.DRAFTING, models.RequestStatus.NEEDS_REVISION}:
+        raise ValueError(f"Cannot cancel request in {request.status.value} state")
+
+    # Update status
+    request.status = models.RequestStatus.CANCELLED
+    session.add(request)
+    session.flush()
+    session.refresh(request)
+
+    # Record audit event
+    record_audit_event(
+        session,
+        entity_type="request",
+        entity_id=request.id,
+        action="cancelled",
+        payload={"reason": reason or ""},
+        actor_id=cancelled_by.id,
+    )
+
+    return request
+
+
+__all__ = ["create_request", "list_requests", "get_request", "reassign_writer", "cancel_request"]
 

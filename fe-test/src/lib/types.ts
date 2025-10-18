@@ -7,13 +7,14 @@ export interface User {
   email: string;
 }
 
-export type RequestStatus = 'drafting' | 'in_review' | 'approved' | 'rejected' | 'needs_revision';
+export type RequestStatus = 'drafting' | 'in_review' | 'approved' | 'rejected' | 'needs_revision' | 'cancelled';
 
 export interface RequestSummary {
   id: string;
   title: string;
   feature_name: string;
   status: RequestStatus;
+  requested_by: string;
   assigned_writer_id?: string | null;
   created_at: string;
   updated_at: string;

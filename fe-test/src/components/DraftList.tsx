@@ -1,14 +1,14 @@
 import React from 'react';
-import type { Draft } from '../lib/types';
+import type { Draft, DraftVersion } from '../lib/types';
 
 interface DraftListProps {
   drafts: Draft[];
   canSelect?: boolean;
-  onSelectVersion?: (draftId: string, versionId: string) => void;
+  onOpenSelectionModal?: (draftId: string, version: DraftVersion) => void;
   onClearSelection?: (draftId: string) => void;
 }
 
-export function DraftList({ drafts, canSelect = false, onSelectVersion, onClearSelection }: DraftListProps) {
+export function DraftList({ drafts, canSelect = false, onOpenSelectionModal, onClearSelection }: DraftListProps) {
   if (drafts.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
@@ -65,7 +65,7 @@ export function DraftList({ drafts, canSelect = false, onSelectVersion, onClearS
                     <div>
                       <button
                         type="button"
-                        onClick={() => onSelectVersion?.(draft.id, version.id)}
+                        onClick={() => onOpenSelectionModal?.(draft.id, version)}
                         disabled={draft.selected_version_id === version.id}
                         className={`inline-flex items-center rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
                           draft.selected_version_id === version.id

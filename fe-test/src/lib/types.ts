@@ -89,10 +89,40 @@ export interface ApprovalResponse {
   request_status: RequestStatus;
 }
 
+export interface GrammarIssue {
+  type: 'grammar' | 'spelling' | 'style' | 'tone' | 'system';
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+export interface GrammarCheckResult {
+  has_issues: boolean;
+  issues: GrammarIssue[];
+  suggestions?: string[];
+  confidence?: number;
+}
+
+export interface GuardrailResult {
+  passes: boolean;
+  violations: string[];
+  fixed?: string;
+  text?: string;
+}
+
+export interface DraftSelectionPayload {
+  version_id: string;
+  comment?: string;
+  edited_content?: string;
+}
+
 export interface DraftSelectionState {
   draft_id: string;
   version_id?: string | null;
   selected_by?: string | null;
   selected_at?: string | null;
   request_status: RequestStatus;
+  guardrail_result?: GuardrailResult | null;
+  grammar_check_result?: GrammarCheckResult | null;
+  comment_id?: string | null;
+  new_version_created?: boolean;
 }

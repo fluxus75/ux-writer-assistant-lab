@@ -1,5 +1,6 @@
 import React from 'react';
 import { DraftList } from '../components/DraftList';
+import { DraftSelectionModal } from '../components/DraftSelectionModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { useUser } from '../components/UserContext';
 import { useDrafts } from '../hooks/useDrafts';
@@ -10,7 +11,7 @@ import {
   getRequest,
   selectDraftVersion,
 } from '../lib/api';
-import type { RequestDetail as RequestDetailType } from '../lib/types';
+import type { DraftSelectionPayload, DraftVersion, RequestDetail as RequestDetailType } from '../lib/types';
 
 interface RequestDetailProps {
   requestId: string;
@@ -29,6 +30,12 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
   const [sourceLanguage, setSourceLanguage] = React.useState('ko');
   const [targetLanguage, setTargetLanguage] = React.useState('en');
   const [generating, setGenerating] = React.useState(false);
+
+  const [selectionModal, setSelectionModal] = React.useState<{
+    isOpen: boolean;
+    draftId: string;
+    version: DraftVersion | null;
+  }>({ isOpen: false, draftId: '', version: null });
 
   const fetchRequest = React.useCallback(async () => {
     try {
@@ -99,18 +106,42 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
     [request],
   );
 
-  const handleSelectVersion = React.useCallback(
-    async (draftId: string, versionId: string) => {
+  const handleOpenSelectionModal = React.useCallback((draftId: string, version: DraftVersion) => {
+    setSelectionModal({ isOpen: true, draftId, version });
+  }, []);
+
+  const handleConfirmSelection = React.useCallback(
+    async (payload: DraftSelectionPayload) => {
       try {
-        const result = await selectDraftVersion(draftId, versionId);
+        const result = await selectDraftVersion(selectionModal.draftId, payload);
+
+        // Update draft selection state
         setDraftSelection(result.draft_id, result.version_id ?? null);
         setRequest((prev) => (prev ? { ...prev, status: result.request_status } : prev));
+
+        // If there are validation issues, return the result to the modal
+        if (
+          (result.guardrail_result && !result.guardrail_result.passes) ||
+          (result.grammar_check_result && result.grammar_check_result.has_issues)
+        ) {
+          return result;
+        }
+
+        // Success - close modal
+        setSelectionModal({ isOpen: false, draftId: '', version: null });
+
+        // Optionally refresh request to get updated drafts
+        await fetchRequest();
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to select version.');
+        throw err; // Let modal handle error display
       }
     },
-    [setDraftSelection],
+    [selectionModal.draftId, setDraftSelection, fetchRequest],
   );
+
+  const handleCancelSelection = React.useCallback(() => {
+    setSelectionModal({ isOpen: false, draftId: '', version: null });
+  }, []);
 
   const handleClearSelection = React.useCallback(
     async (draftId: string) => {
@@ -293,10 +324,21 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
             request.status !== 'approved' &&
             request.status !== 'rejected'
           }
-          onSelectVersion={handleSelectVersion}
+          onOpenSelectionModal={handleOpenSelectionModal}
           onClearSelection={handleClearSelection}
         />
       </section>
+
+      {/* Draft Selection Modal */}
+      {selectionModal.version && (
+        <DraftSelectionModal
+          isOpen={selectionModal.isOpen}
+          draftId={selectionModal.draftId}
+          version={selectionModal.version}
+          onConfirm={handleConfirmSelection}
+          onCancel={handleCancelSelection}
+        />
+      )}
     </div>
   );
 }

@@ -4,13 +4,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
 from app.db import models
 from app.services.audit.service import record_audit_event
+from app.services.comments.service import create_comment
+from app.services.grammar.service import check_grammar_and_style, GrammarCheckError
+from app.services.guardrails.loader import load_guardrail_rules
+from app.services.guardrails.service import apply_guardrails
 from app.services.translate.service import TranslateOptions, TranslateRequest, translate
 
 
@@ -119,42 +123,147 @@ def select_draft_version(
     draft: models.Draft,
     version: models.DraftVersion,
     actor: models.User,
-) -> models.SelectedDraftVersion:
-    """Select a draft version for designer review."""
+    comment_text: Optional[str] = None,
+    edited_content: Optional[str] = None,
+) -> Tuple[models.SelectedDraftVersion, Dict[str, Any]]:
+    """Select a draft version for designer review.
 
+    Args:
+        session: Database session
+        draft: Draft to select from
+        version: Version to select (or base version if editing)
+        actor: User performing the action
+        comment_text: Optional comment about the selection
+        edited_content: Optional edited text (creates new MANUAL version)
+
+    Returns:
+        Tuple of (SelectedDraftVersion, metadata dict with validation results)
+    """
     if version.draft_id != draft.id:
         raise ValueError("Draft version does not belong to the given draft")
 
+    validation_metadata: Dict[str, Any] = {
+        "guardrail_result": None,
+        "grammar_check_result": None,
+        "comment_id": None,
+        "new_version_created": False,
+    }
+
+    actual_version = version
+    request = draft.request
+
+    # If writer edited the content, create a new manual version
+    if edited_content and edited_content.strip():
+        # 1. Run guardrail check
+        guardrail_result = None
+        try:
+            rules = load_guardrail_rules(session, request=request)
+            guardrail_result = apply_guardrails(
+                edited_content,
+                rules,
+                hints={},
+                apply_fix=True,
+            )
+            validation_metadata["guardrail_result"] = guardrail_result
+        except Exception:
+            # If guardrail fails, continue without it
+            pass
+
+        # 2. Run LLM grammar check
+        grammar_check_result = None
+        try:
+            grammar_check_result = check_grammar_and_style(
+                text=edited_content,
+                target_language="en",  # TODO: Get from request context
+                tone=request.tone,
+                style_preferences=request.style_preferences,
+            )
+            validation_metadata["grammar_check_result"] = grammar_check_result
+        except GrammarCheckError:
+            # If grammar check fails, continue without it
+            pass
+
+        # 3. Create new manual version with edited content
+        new_version = models.DraftVersion(
+            id=str(uuid4()),
+            draft_id=draft.id,
+            version_index=len(draft.versions) + 1,
+            content=edited_content,
+            metadata_json={
+                "original_version_id": version.id,
+                "edited_by": actor.id,
+                "guardrail_result": guardrail_result,
+                "grammar_check_result": grammar_check_result,
+            },
+            created_by=actor.id,
+        )
+        session.add(new_version)
+        session.flush()
+        session.refresh(new_version)
+
+        actual_version = new_version
+        validation_metadata["new_version_created"] = True
+
+        record_audit_event(
+            session,
+            entity_type="draft",
+            entity_id=draft.id,
+            action="version_edited",
+            payload={
+                "original_version_id": version.id,
+                "new_version_id": new_version.id,
+                "has_guardrail_violations": not guardrail_result.get("passes", True) if guardrail_result else False,
+                "has_grammar_issues": grammar_check_result.get("has_issues", False) if grammar_check_result else False,
+            },
+            actor_id=actor.id,
+        )
+
+    # Select the version (original or newly created)
     selection = draft.selected_version_link
     timestamp = datetime.now(timezone.utc)
     if selection is None:
         selection = models.SelectedDraftVersion(
             draft_id=draft.id,
-            version_id=version.id,
+            version_id=actual_version.id,
             selected_by=actor.id,
             selected_at=timestamp,
         )
         session.add(selection)
     else:
-        selection.version_id = version.id
+        selection.version_id = actual_version.id
         selection.selected_by = actor.id
         selection.selected_at = timestamp
         session.add(selection)
 
-    request = draft.request
     request.status = models.RequestStatus.IN_REVIEW
     session.add(request)
     session.flush()
+
+    # Create comment if provided
+    if comment_text and comment_text.strip():
+        comment = create_comment(
+            session,
+            request=request,
+            author=actor,
+            body=comment_text.strip(),
+            draft_version=actual_version,
+        )
+        validation_metadata["comment_id"] = comment.id
+
     record_audit_event(
         session,
         entity_type="draft",
         entity_id=draft.id,
         action="version_selected",
-        payload={"version_id": version.id},
+        payload={
+            "version_id": actual_version.id,
+            "has_comment": bool(comment_text),
+            "was_edited": validation_metadata["new_version_created"],
+        },
         actor_id=actor.id,
     )
     session.refresh(selection)
-    return selection
+    return selection, validation_metadata
 
 
 def clear_draft_selection(

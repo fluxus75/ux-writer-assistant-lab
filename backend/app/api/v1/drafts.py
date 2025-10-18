@@ -60,6 +60,8 @@ class DraftResponse(BaseModel):
 
 class DraftSelectionPayload(BaseModel):
     version_id: str
+    comment: Optional[str] = None
+    edited_content: Optional[str] = None
 
 
 class DraftSelectionState(BaseModel):
@@ -68,6 +70,10 @@ class DraftSelectionState(BaseModel):
     selected_by: Optional[str] = None
     selected_at: Optional[datetime] = None
     request_status: models.RequestStatus
+    guardrail_result: Optional[Dict[str, Any]] = None
+    grammar_check_result: Optional[Dict[str, Any]] = None
+    comment_id: Optional[str] = None
+    new_version_created: bool = False
 
 
 @router.post("/drafts", response_model=DraftResponse, status_code=status.HTTP_201_CREATED)
@@ -143,7 +149,14 @@ def select_draft_version_endpoint(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft version not found")
 
     try:
-        selection = select_draft_version(session, draft=draft, version=version, actor=actor)
+        selection, validation_metadata = select_draft_version(
+            session,
+            draft=draft,
+            version=version,
+            actor=actor,
+            comment_text=payload.comment,
+            edited_content=payload.edited_content,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -154,6 +167,10 @@ def select_draft_version_endpoint(
         selected_by=selection.selected_by,
         selected_at=selection.selected_at,
         request_status=draft.request.status,
+        guardrail_result=validation_metadata.get("guardrail_result"),
+        grammar_check_result=validation_metadata.get("grammar_check_result"),
+        comment_id=validation_metadata.get("comment_id"),
+        new_version_created=validation_metadata.get("new_version_created", False),
     )
 
 

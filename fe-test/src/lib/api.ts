@@ -4,6 +4,7 @@ import type {
   CreateDraftPayload,
   CreateRequestPayload,
   Draft,
+  DraftSelectionPayload,
   DraftSelectionState,
   RequestDetail,
   RequestSummary,
@@ -162,8 +163,8 @@ export function createApproval(payload: ApprovalPayload) {
   });
 }
 
-export function selectDraftVersion(draftId: string, versionId: string) {
-  return postJSON<DraftSelectionState>(`/v1/drafts/${draftId}/selection`, { version_id: versionId });
+export function selectDraftVersion(draftId: string, payload: DraftSelectionPayload) {
+  return postJSON<DraftSelectionState>(`/v1/drafts/${draftId}/selection`, payload);
 }
 
 export function clearDraftSelection(draftId: string) {

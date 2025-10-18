@@ -8,6 +8,7 @@ import type { RequestStatus } from '../lib/types';
 const FILTER_LABELS: { value: RequestStatus | 'all'; label: string }[] = [
   { value: 'all', label: '전체' },
   { value: 'drafting', label: '작성중' },
+  { value: 'needs_revision', label: '재작업 필요' },
   { value: 'in_review', label: '검토중' },
   { value: 'approved', label: '승인됨' },
   { value: 'rejected', label: '반려됨' },

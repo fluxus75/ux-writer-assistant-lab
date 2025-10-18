@@ -15,6 +15,7 @@ export function WriterDashboard() {
   }, [currentUser, requests]);
 
   const drafting = assignedRequests.filter((request) => request.status === 'drafting');
+  const needsRevision = assignedRequests.filter((request) => request.status === 'needs_revision');
   const inReview = assignedRequests.filter((request) => request.status === 'in_review');
 
   if (!currentUser) {
@@ -73,6 +74,35 @@ export function WriterDashboard() {
           {!loading && drafting.length === 0 && (
             <div className="rounded-lg border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
               작성 대기 중인 작업이 없습니다.
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">재작업 필요</h2>
+            <p className="text-sm text-slate-600">디자이너가 변경을 요청한 항목입니다.</p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+            {needsRevision.length}
+          </span>
+        </div>
+        <div className="grid gap-4">
+          {needsRevision.map((request) => (
+            <RequestCard
+              key={request.id}
+              request={request}
+              showDraftButton
+              onClick={() => {
+                window.location.hash = `work/${request.id}`;
+              }}
+            />
+          ))}
+          {!loading && needsRevision.length === 0 && (
+            <div className="rounded-lg border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
+              재작업이 필요한 요청이 없습니다.
             </div>
           )}
         </div>

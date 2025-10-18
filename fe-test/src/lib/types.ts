@@ -7,7 +7,7 @@ export interface User {
   email: string;
 }
 
-export type RequestStatus = 'drafting' | 'in_review' | 'approved' | 'rejected';
+export type RequestStatus = 'drafting' | 'in_review' | 'approved' | 'rejected' | 'needs_revision';
 
 export interface RequestSummary {
   id: string;

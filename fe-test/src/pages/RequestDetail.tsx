@@ -182,7 +182,9 @@ export function RequestDetail({ requestId, mode, onBack }: RequestDetailProps) {
   }
 
   const canGenerateDraft =
-    mode === 'work' && currentUser?.role === 'writer' && request.status === 'drafting';
+    mode === 'work' &&
+    currentUser?.role === 'writer' &&
+    (request.status === 'drafting' || request.status === 'needs_revision');
   const canReview =
     mode === 'view' && currentUser?.role === 'designer' && request.status === 'in_review';
 

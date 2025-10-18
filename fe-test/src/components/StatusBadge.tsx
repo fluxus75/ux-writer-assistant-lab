@@ -6,6 +6,7 @@ const STATUS_META: Record<RequestStatus, { label: string; classes: string }> = {
   in_review: { label: '검토중', classes: 'bg-yellow-50 text-yellow-700' },
   approved: { label: '승인됨', classes: 'bg-green-50 text-green-700' },
   rejected: { label: '반려됨', classes: 'bg-red-50 text-red-700' },
+  needs_revision: { label: '재작업 필요', classes: 'bg-orange-50 text-orange-700' },
 };
 
 export function StatusBadge({ status }: { status: RequestStatus }) {

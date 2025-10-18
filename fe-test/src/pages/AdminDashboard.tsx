@@ -6,9 +6,10 @@ import { Ingest } from './Ingest';
 import { Retrieve } from './Retrieve';
 import { Translate } from './Translate';
 
-const STATUS_ORDER: RequestStatus[] = ['drafting', 'in_review', 'approved', 'rejected'];
+const STATUS_ORDER: RequestStatus[] = ['drafting', 'needs_revision', 'in_review', 'approved', 'rejected'];
 const STATUS_LABELS: Record<RequestStatus, string> = {
   drafting: '작성중',
+  needs_revision: '재작업 필요',
   in_review: '검토중',
   approved: '승인됨',
   rejected: '반려됨',
@@ -100,6 +101,7 @@ function AdminOverview() {
   const statusGroups = React.useMemo(() => {
     const counts: Record<RequestStatus, number> = {
       drafting: 0,
+      needs_revision: 0,
       in_review: 0,
       approved: 0,
       rejected: 0,

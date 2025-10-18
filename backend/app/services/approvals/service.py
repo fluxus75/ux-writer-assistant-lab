@@ -33,7 +33,7 @@ def record_decision(
     if decision == models.ApprovalDecision.APPROVED:
         request.status = models.RequestStatus.APPROVED
     else:
-        request.status = models.RequestStatus.REJECTED
+        request.status = models.RequestStatus.NEEDS_REVISION
     session.add(request)
     session.flush()
     session.refresh(approval)

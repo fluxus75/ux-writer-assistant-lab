@@ -33,7 +33,7 @@ export function DraftList({ drafts, canSelect = false, onSelectVersion, onClearS
 
             {selectedVersion && (
               <div className="flex flex-wrap items-center justify-between rounded-md bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700">
-                <span>선택된 버전: {selectedVersion.version_index + 1}</span>
+                <span>선택된 버전: {selectedVersion.version_index}</span>
                 {canSelect && onClearSelection && (
                   <button
                     type="button"
@@ -57,7 +57,7 @@ export function DraftList({ drafts, canSelect = false, onSelectVersion, onClearS
                   }`}
                 >
                   <header className="flex flex-col gap-2 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between">
-                    <span>버전 {version.version_index + 1}</span>
+                    <span>버전 {version.version_index}</span>
                     <span>{new Date(version.created_at).toLocaleString()}</span>
                   </header>
                   <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{version.content}</pre>

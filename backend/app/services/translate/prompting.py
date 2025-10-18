@@ -20,6 +20,7 @@ class TranslationPromptParams:
     retrieval_examples_with_context: Iterable[Dict[str, str]] = field(default_factory=tuple)
     max_output_tokens: Optional[int] = None
     temperature: Optional[float] = None
+    num_candidates: int = 1
 
 
 def build_prompt(params: TranslationPromptParams) -> PromptRequest:
@@ -30,6 +31,12 @@ def build_prompt(params: TranslationPromptParams) -> PromptRequest:
         "Always return polished UX strings ready for end users.",
         "Keep responses concise unless specifically asked to expand.",
     ]
+
+    if params.num_candidates > 1:
+        system_parts.append(
+            "Each response will be generated independently. "
+            "Use distinctly different vocabulary, sentence structures, and phrasings while maintaining the same meaning."
+        )
 
     if params.tone:
         system_parts.append(f"Adhere to the requested tone: {params.tone}.")

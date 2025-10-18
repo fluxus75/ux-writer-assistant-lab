@@ -136,7 +136,7 @@ def translate(
     # Use higher temperature when generating multiple candidates
     candidate_temperature = options.temperature
     if candidate_temperature is None and num_candidates > 1:
-        candidate_temperature = 0.7
+        candidate_temperature = 1.0
 
     prompt = build_prompt(
         TranslationPromptParams(
@@ -149,6 +149,7 @@ def translate(
             retrieval_examples_with_context=retrieval_examples_with_context,
             max_output_tokens=options.max_output_tokens,
             temperature=candidate_temperature,
+            num_candidates=num_candidates,
         )
     )
 
@@ -184,10 +185,13 @@ def translate(
     candidates: List[TranslationCandidate] = []
     selected = base_text
     selected_guardrail = None
-    for text in candidate_texts:
+    for idx, text in enumerate(candidate_texts):
         guardrail_result = None
         if options.guardrails:
-            guardrail_result = apply_guardrails(text, rules, request.hints)
+            # Apply fix only to the first candidate for accuracy
+            # Others keep original text for diversity, but still check violations
+            apply_fix = (idx == 0)
+            guardrail_result = apply_guardrails(text, rules, request.hints, apply_fix=apply_fix)
             fixed = guardrail_result.get("fixed", text)
         else:
             fixed = text

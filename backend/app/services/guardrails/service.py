@@ -5,7 +5,18 @@ def _tokenize(text: str) -> List[str]:
     return [tok for tok in text.strip().split() if tok]
 
 
-def apply_guardrails(text: str, rules: Dict[str, Any], hints: Dict[str, Any] | None = None) -> Dict[str, Any]:
+def apply_guardrails(text: str, rules: Dict[str, Any], hints: Dict[str, Any] | None = None, apply_fix: bool = True) -> Dict[str, Any]:
+    """Apply guardrail rules to text.
+
+    Args:
+        text: Text to check
+        rules: Guardrail rules to apply
+        hints: Additional hints to merge with rules
+        apply_fix: If True, apply replace_map fixes. If False, only check violations without modifying text.
+
+    Returns:
+        Dictionary with 'text', 'passes', 'violations', and 'fixed' keys
+    """
     hints = hints or {}
     result: Dict[str, Any] = {"text": text, "passes": True, "violations": []}
 
@@ -40,9 +51,10 @@ def apply_guardrails(text: str, rules: Dict[str, Any], hints: Dict[str, Any] | N
     replace_map.update(merged_rules.get("replace_map") or {})
     replace_map.update(hints.get("replace_map") or {})
     fixed = text
-    for src, dst in replace_map.items():
-        if src:
-            fixed = fixed.replace(src, dst)
+    if apply_fix:
+        for src, dst in replace_map.items():
+            if src:
+                fixed = fixed.replace(src, dst)
 
     style_rules = merged_rules.get("style") or {}
     if style_rules:

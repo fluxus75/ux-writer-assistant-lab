@@ -11,13 +11,17 @@ from app.services.llm.client import LLMResult, PromptRequest
 
 
 class _StubLLM:
-    def __init__(self, text: str) -> None:
+    def __init__(self, text: str, candidates: list[str] | None = None) -> None:
         self.text = text
+        self.candidates = candidates or [text]
         self.last_prompt: PromptRequest | None = None
 
     def generate(self, prompt: PromptRequest) -> LLMResult:
         self.last_prompt = prompt
-        return LLMResult(text=self.text, latency_ms=12.34, raw={})
+        # Return multiple candidates if requested
+        if prompt.n and prompt.n > 1:
+            return LLMResult(text=self.candidates[0], candidates=self.candidates, latency_ms=12.34, raw={})
+        return LLMResult(text=self.text, candidates=[self.text], latency_ms=12.34, raw={})
 
 
 @pytest.fixture(autouse=True)
@@ -142,3 +146,59 @@ async def test_translate_uses_db_style_rules(stub_llm: _StubLLM) -> None:
     assert any("person:impersonal" in violation for violation in guardrail["violations"])
     assert any("punctuation:period" in violation for violation in guardrail["violations"])
     assert body["selected"] == "I will return now!"
+
+
+@pytest.mark.anyio
+async def test_translate_multiple_candidates_selective_fix(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that only the first candidate gets replace_map applied, others keep original text."""
+    # Create stub with multiple diverse candidates
+    stub = _StubLLM(
+        text="The robot is charging",
+        candidates=[
+            "The robot is charging",
+            "Robot charges now",
+            "The robot is being charged",
+        ]
+    )
+    monkeypatch.setattr(llm_registry, "_CLIENT", stub, raising=False)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        await client.post("/v1/ingest")
+        payload = {
+            "text": "로봇이 충전 중입니다",
+            "source_language": "ko",
+            "target_language": "en",
+            "hints": {
+                "replace_map": {"robot": "device", "charging": "powering", "charged": "powered"}
+            },
+            "options": {
+                "use_rag": False,
+                "guardrails": True,
+                "num_candidates": 3,
+            },
+        }
+        resp = await client.post("/v1/translate", json=payload)
+
+    assert resp.status_code == 200
+    body = resp.json()
+
+    # Check we got 3 candidates
+    assert len(body["candidates"]) == 3
+
+    # First candidate should have replace_map applied
+    assert body["candidates"][0]["text"] == "The device is powering"
+    assert body["candidates"][0]["guardrail"]["passes"] is True
+
+    # Second candidate should keep original text (no replace_map)
+    assert body["candidates"][1]["text"] == "Robot charges now"
+    # But violations should still be checked
+    assert body["candidates"][1]["guardrail"] is not None
+
+    # Third candidate should keep original text
+    assert body["candidates"][2]["text"] == "The robot is being charged"
+    assert body["candidates"][2]["guardrail"] is not None
+
+    # Verify diversity is maintained (they should be different)
+    texts = [c["text"] for c in body["candidates"]]
+    assert len(set(texts)) == 3, "All candidates should be different"

@@ -1,5 +1,8 @@
 # 🐳 Docker Desktop 무료 오픈소스 대안 가이드
 
+**최종 업데이트**: 2025-01-19
+**현재 프로젝트 구성**: PostgreSQL 15 + Qdrant v1.15.1
+
 ## 📌 왜 대안이 필요한가?
 
 ### Docker Desktop 라이선스 제약
@@ -256,8 +259,14 @@ podman-compose up -d
 podman-compose ps
 
 # 3. 서비스 연결 확인
-curl http://localhost:6333/collections
-psql postgresql://ux_writer:ux_writer@localhost:5432/ux_writer -c "SELECT 1;"
+# Qdrant 확인
+curl http://localhost:6333/
+
+# PostgreSQL 확인 (Windows Git Bash)
+docker exec -it dev-postgres-1 psql -U ux_writer -d ux_writer -c "SELECT version();"
+
+# PostgreSQL 확인 (Podman)
+podman exec -it dev-postgres-1 psql -U ux_writer -d ux_writer -c "SELECT version();"
 ```
 
 ---
@@ -305,3 +314,110 @@ psql postgresql://ux_writer:ux_writer@localhost:5432/ux_writer -c "SELECT 1;"
 ✅ 보안 강화 (Daemonless, Rootless)
 
 **추천**: 개인 프로젝트는 Docker Desktop, 회사 프로젝트는 Podman Desktop 사용
+
+---
+
+## 📊 현재 프로젝트 구성 정보
+
+### Docker Compose 서비스 구성
+
+```yaml
+services:
+  postgres:
+    image: postgres:15
+    ports: "5432:5432"
+    environment:
+      POSTGRES_USER: ux_writer
+      POSTGRES_PASSWORD: ux_writer
+      POSTGRES_DB: ux_writer
+    volumes:
+      - ./dev-data/postgres:/var/lib/postgresql/data
+
+  qdrant:
+    image: qdrant/qdrant:v1.15.1
+    ports:
+      - "6333:6333"  # REST API
+      - "6334:6334"  # gRPC
+    environment:
+      QDRANT__STORAGE__CACHE_SIZE: 1024
+    volumes:
+      - ./dev-data/qdrant:/qdrant/storage
+
+networks:
+  default:
+    name: ux-writer-dev-net
+```
+
+### 필요한 포트
+
+- **5432**: PostgreSQL (데이터베이스)
+- **6333**: Qdrant REST API (벡터 검색)
+- **6334**: Qdrant gRPC (내부 통신)
+- **8000**: Backend (FastAPI)
+- **5173**: Frontend (Vite)
+
+### 데이터 볼륨
+
+- `infra/dev/dev-data/postgres/` - PostgreSQL 데이터 (16개 테이블)
+- `infra/dev/dev-data/qdrant/` - Qdrant 벡터 저장소 (3개 컬렉션)
+
+### 데이터베이스 테이블 (16개)
+
+1. alembic_version
+2. approvals
+3. audit_logs
+4. comments
+5. context_snippets
+6. device_taxonomy
+7. draft_versions
+8. drafts
+9. export_jobs
+10. glossary_entries
+11. guardrail_rules
+12. rag_ingestions
+13. requests
+14. selected_draft_versions
+15. style_guide_entries
+16. users
+
+### Qdrant 컬렉션 (3개)
+
+1. context_snippets - 컨텍스트 문맥 벡터
+2. glossary_terms - 용어집 벡터
+3. style_guides - 스타일 가이드 벡터
+
+---
+
+## 🔄 Docker/Podman 전환 시 주의사항
+
+### 볼륨 마운트 경로
+
+Docker Desktop과 Podman Desktop 모두 동일한 경로 사용:
+- Windows: `./dev-data/postgres`, `./dev-data/qdrant`
+- WSL2: `/mnt/c/Users/yoons/works/ux-writer-assistant-lab/infra/dev/dev-data`
+
+### 네트워크 설정
+
+Docker Compose는 자동으로 `ux-writer-dev-net` 네트워크 생성.
+Podman Compose도 동일하게 작동.
+
+### 컨테이너 이름
+
+- Docker: `dev-postgres-1`, `dev-qdrant-1`
+- Podman: 동일한 이름 패턴 사용
+
+### 데이터 이전
+
+Docker → Podman 전환 시:
+
+```bash
+# 1. Docker에서 데이터 백업
+cd infra/dev
+docker compose down
+cp -r dev-data dev-data-backup
+
+# 2. Podman으로 시작
+podman-compose up -d
+
+# 데이터는 동일한 디렉토리를 사용하므로 자동으로 마운트됨
+```

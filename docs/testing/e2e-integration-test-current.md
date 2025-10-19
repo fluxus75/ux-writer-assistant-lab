@@ -1,6 +1,6 @@
 # 🚀 UX Writer Assistant - Complete E2E Integration Test Guide
 
-**버전**: 현재 구현 (2025-01-13)
+**버전**: 현재 구현 (2025-01-19)
 **목표**: Docker(PostgreSQL + Qdrant) + Backend + Frontend(fe-test)를 모두 구동하여 완전한 워크플로우 테스트
 
 ---
@@ -168,6 +168,7 @@ docker exec -it dev-postgres-1 psql -U ux_writer -d ux_writer -c "\dt"
  public | device_taxonomy         | table | ux_writer
  public | draft_versions          | table | ux_writer
  public | drafts                  | table | ux_writer
+ public | export_jobs             | table | ux_writer
  public | glossary_entries        | table | ux_writer
  public | guardrail_rules         | table | ux_writer
  public | rag_ingestions          | table | ux_writer
@@ -175,7 +176,7 @@ docker exec -it dev-postgres-1 psql -U ux_writer -d ux_writer -c "\dt"
  public | selected_draft_versions | table | ux_writer
  public | style_guide_entries     | table | ux_writer
  public | users                   | table | ux_writer
-(15 rows)
+(16 rows)
 ```
 
 #### 4단계: 테스트 사용자 생성
@@ -771,10 +772,326 @@ curl http://localhost:8000/v1/requests/statistics \
   "by_status": {
     "drafting": 20,
     "in_review": 10,
-    "approved": 5
+    "approved": 5,
+    "needs_revision": 3,
+    "cancelled": 2
   }
 }
 ```
+
+### Comments 시스템 테스트
+
+#### 1. Request에 댓글 작성
+
+**브라우저에서**:
+1. **Designer** 또는 **Writer**로 로그인
+2. 요청 상세 페이지 이동
+3. **Activity Timeline** 또는 댓글 섹션에서 댓글 작성
+4. 내용 입력 후 **댓글 작성** 클릭
+
+**API 테스트**:
+```bash
+curl -X POST http://localhost:8000/v1/comments \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: designer-1" \
+  -H "X-User-Role: designer" \
+  -d '{
+    "request_id": "<REQUEST_ID>",
+    "body": "초안 잘 봤습니다. 톤을 조금 더 친근하게 해주세요."
+  }'
+```
+
+#### 2. Draft Version에 특정 댓글 작성
+
+```bash
+curl -X POST http://localhost:8000/v1/comments \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: writer-1" \
+  -H "X-User-Role: writer" \
+  -d '{
+    "request_id": "<REQUEST_ID>",
+    "draft_version_id": "<VERSION_ID>",
+    "body": "이 버전이 가장 적절한 것 같습니다."
+  }'
+```
+
+#### 3. 댓글 조회 및 해결
+
+**댓글 목록 조회**:
+```bash
+curl http://localhost:8000/v1/requests/<REQUEST_ID>/comments \
+  -H "X-User-Id: designer-1" \
+  -H "X-User-Role: designer"
+```
+
+**댓글 해결(Resolve)**:
+```bash
+curl -X POST http://localhost:8000/v1/comments/<COMMENT_ID>/resolve \
+  -H "X-User-Id: designer-1" \
+  -H "X-User-Role: designer"
+```
+
+**확인 사항**:
+- ✅ 댓글이 Activity Timeline에 시간순 표시
+- ✅ Draft version별 댓글 구분
+- ✅ 작성자 이름, 시간 표시
+- ✅ 해결된 댓글 "Resolved" 배지 표시
+
+### Request 취소(Cancellation) 기능 테스트
+
+#### 시나리오: Designer가 요청 취소
+
+1. **Designer Dashboard** → `drafting` 또는 `needs_revision` 상태 요청 선택
+2. 요청 상세 페이지 → **요청 취소** 버튼 클릭
+3. 취소 사유 입력 (선택사항)
+4. **확인** 클릭
+
+**API 테스트**:
+```bash
+curl -X POST http://localhost:8000/v1/requests/<REQUEST_ID>/cancel \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: designer-1" \
+  -H "X-User-Role: designer" \
+  -d '{
+    "reason": "요구사항 변경으로 더 이상 필요하지 않습니다."
+  }'
+```
+
+**예상 응답**:
+```json
+{
+  "id": "<REQUEST_ID>",
+  "status": "cancelled",
+  "message": "Request cancelled successfully"
+}
+```
+
+**제약 사항 확인**:
+- ❌ `approved` 상태 → 취소 불가 (400 에러)
+- ❌ `rejected` 상태 → 취소 불가 (400 에러)
+- ❌ `in_review` 상태 → 취소 불가 (400 에러)
+- ✅ `drafting` 상태 → 취소 가능
+- ✅ `needs_revision` 상태 → 취소 가능
+- ❌ 다른 Designer의 요청 → 취소 불가 (403 에러)
+
+### Device Management (Admin) 테스트
+
+#### 1. Device 목록 조회
+
+**브라우저**:
+1. **Admin** 역할로 로그인
+2. **Admin Dashboard** → **Device Management** 클릭
+
+**API 테스트**:
+```bash
+curl http://localhost:8000/v1/admin/devices \
+  -H "X-User-Id: admin-1" \
+  -H "X-User-Role: admin"
+```
+
+#### 2. 새 Device 생성
+
+**브라우저**:
+1. **Device Management** 페이지
+2. **새 디바이스 추가** 버튼 클릭
+3. 폼 입력:
+   - **ID**: `smart_tv` (소문자, 숫자, 언더스코어만)
+   - **한글명**: `스마트 TV`
+   - **영문명**: `Smart TV`
+   - **카테고리**: `electronics`
+4. **생성** 클릭
+
+**API 테스트**:
+```bash
+curl -X POST http://localhost:8000/v1/admin/devices \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: admin-1" \
+  -H "X-User-Role: admin" \
+  -d '{
+    "id": "smart_tv",
+    "display_name_ko": "스마트 TV",
+    "display_name_en": "Smart TV",
+    "category": "electronics"
+  }'
+```
+
+#### 3. Device 수정
+
+```bash
+curl -X PUT http://localhost:8000/v1/admin/devices/smart_tv \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: admin-1" \
+  -H "X-User-Role: admin" \
+  -d '{
+    "display_name_ko": "스마트 TV (업데이트)",
+    "active": true
+  }'
+```
+
+#### 4. Device 비활성화
+
+```bash
+curl -X DELETE http://localhost:8000/v1/admin/devices/smart_tv \
+  -H "X-User-Id: admin-1" \
+  -H "X-User-Role: admin"
+```
+
+**확인 사항**:
+- ✅ Active 디바이스만 Request 생성 시 선택 가능
+- ✅ 비활성화된 디바이스는 목록에서 숨김
+- ✅ `include_inactive=true` 쿼리로 비활성 디바이스 조회 가능
+
+### Approved Requests Download 테스트
+
+#### 1. 승인된 요청 목록 조회
+
+**브라우저**:
+1. **Designer Dashboard** → **Download** 탭 클릭
+2. 필터 설정:
+   - **기간**: 2025-01-01 ~ 2025-01-31
+   - **Writer**: Bob Lee 선택
+   - **Device**: robot_vacuum 선택
+3. **조회** 클릭
+
+**API 테스트**:
+```bash
+curl "http://localhost:8000/v1/requests/approved?from_date=2025-01-01&to_date=2025-01-31&writer_id=writer-1&device=robot_vacuum" \
+  -H "X-User-Id: designer-1" \
+  -H "X-User-Role: designer"
+```
+
+**예상 응답**:
+```json
+{
+  "items": [
+    {
+      "id": "<REQUEST_ID>",
+      "title": "로봇청소기 충전 완료 메시지",
+      "feature_name": "충전 완료",
+      "source_text": "충전이 완료되었습니다",
+      "approved_draft_content": "Charging completed.",
+      "device": "robot_vacuum",
+      "assigned_writer_id": "writer-1",
+      "assigned_writer_name": "Bob Lee",
+      "approved_at": "2025-01-15T10:30:00Z",
+      "created_at": "2025-01-10T09:00:00Z"
+    }
+  ],
+  "total_count": 1
+}
+```
+
+#### 2. Excel 다운로드
+
+**브라우저**:
+1. **Download** 페이지에서 승인된 요청 목록 확인
+2. **체크박스**로 다운로드할 항목 선택
+3. **Excel 다운로드** 버튼 클릭
+4. `approved_requests_YYYYMMDD_HHMMSS.xlsx` 파일 다운로드 확인
+
+**API 테스트**:
+```bash
+curl -X POST http://localhost:8000/v1/requests/download/excel \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: designer-1" \
+  -H "X-User-Role: designer" \
+  -d '{
+    "request_ids": ["<REQUEST_ID_1>", "<REQUEST_ID_2>"]
+  }' \
+  --output approved_requests.xlsx
+```
+
+**Excel 파일 내용 확인**:
+- ✅ 헤더: Device, 제목, 원문 (KO), 영문안, Feature Name, Writer, 승인일자, 요청일자
+- ✅ 선택한 요청들의 데이터가 행으로 표시
+- ✅ 컬럼 너비 자동 조정 (최대 50자)
+
+### User List 조회 (Admin/Designer/Writer) 테스트
+
+```bash
+curl http://localhost:8000/v1/admin/users \
+  -H "X-User-Id: admin-1" \
+  -H "X-User-Role: admin"
+```
+
+**예상 응답**:
+```json
+[
+  {
+    "id": "designer-1",
+    "name": "Alice Kim",
+    "email": "alice@company.com",
+    "role": "designer"
+  },
+  {
+    "id": "writer-1",
+    "name": "Bob Lee",
+    "email": "bob@company.com",
+    "role": "writer"
+  },
+  {
+    "id": "admin-1",
+    "name": "Admin",
+    "email": "admin@company.com",
+    "role": "admin"
+  }
+]
+```
+
+**확인 사항**:
+- ✅ 모든 역할(Admin/Designer/Writer)에서 접근 가능
+- ✅ 이름순 정렬
+
+### Selected Draft Version 테스트
+
+#### Writer가 드래프트 버전 선택
+
+1. **Writer Dashboard** → 요청 상세 페이지
+2. **AI 드래프트 생성**으로 3개 버전 생성
+3. 각 버전 검토 후 원하는 버전의 **선택** 버튼 클릭
+4. **검토 요청** 버튼 클릭 → `in_review` 상태로 변경
+
+**확인 사항**:
+- ✅ 선택된 버전에 "Selected" 배지 표시
+- ✅ Request 상태 자동 변경: `drafting` → `in_review`
+- ✅ 다른 버전 선택 시 이전 선택 해제
+
+#### Designer가 선택된 버전 확인 및 승인
+
+1. **Designer Dashboard** → **검토중** 요청 선택
+2. 선택된 드래프트 버전 확인 (Selected 배지)
+3. **승인** 또는 **수정 요청** 버튼 클릭
+
+**승인 시**:
+```bash
+curl -X POST http://localhost:8000/v1/approvals \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: designer-1" \
+  -H "X-User-Role: designer" \
+  -d '{
+    "request_id": "<REQUEST_ID>",
+    "decision": "approved",
+    "comment": "Perfect translation!"
+  }'
+```
+
+**수정 요청 시** (needs_revision 상태로 변경):
+```bash
+curl -X POST http://localhost:8000/v1/approvals \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: designer-1" \
+  -H "X-User-Role: designer" \
+  -d '{
+    "request_id": "<REQUEST_ID>",
+    "decision": "rejected",
+    "comment": "톤이 너무 딱딱합니다. 더 친근한 표현으로 수정해주세요."
+  }'
+```
+
+**확인 사항**:
+- ✅ 승인 시 → `approved` 상태
+- ✅ 거절 시 → `needs_revision` 상태 (재작업 가능)
+- ✅ 승인된 버전만 Download 페이지에서 조회 가능
 
 ---
 
@@ -949,8 +1266,9 @@ docker exec -it dev-postgres-1 psql -U ux_writer -d ux_writer -c \
 - [ ] Docker Desktop 실행 중
 - [ ] PostgreSQL 컨테이너 실행 중 (포트 5432)
 - [ ] Qdrant 컨테이너 실행 중 (포트 6333, 6334)
-- [ ] 데이터베이스 마이그레이션 완료 (15개 테이블)
+- [ ] 데이터베이스 마이그레이션 완료 (16개 테이블)
 - [ ] 테스트 사용자 생성 완료 (3명)
+- [ ] Device Taxonomy 초기 데이터 생성 완료
 
 ### Data Ingestion
 
@@ -994,14 +1312,58 @@ docker exec -it dev-postgres-1 psql -U ux_writer -d ux_writer -c \
 ### 신규 기능: 통계 API
 
 - [ ] Designer별 통계 표시
-- [ ] Status별 통계 표시
+- [ ] Status별 통계 표시 (needs_revision, cancelled 포함)
 - [ ] Writer/Admin만 접근 가능
+
+### 신규 기능: Comments 시스템
+
+- [ ] Request에 댓글 작성
+- [ ] Draft version별 댓글 작성
+- [ ] 댓글 목록 조회
+- [ ] 댓글 해결(Resolve) 기능
+- [ ] Activity Timeline에 통합 표시
+
+### 신규 기능: Request Cancellation
+
+- [ ] Designer가 자신의 요청 취소 가능
+- [ ] drafting/needs_revision 상태에서만 취소 가능
+- [ ] 취소 사유 입력 (선택사항)
+- [ ] 권한 검증 (본인만 취소 가능)
+
+### 신규 기능: Device Management (Admin)
+
+- [ ] Device 목록 조회 (active/inactive 필터)
+- [ ] 새 Device 생성 (ID 패턴 검증)
+- [ ] Device 수정 (한글명/영문명/카테고리)
+- [ ] Device 비활성화/삭제
+- [ ] Request 생성 시 active 디바이스만 선택 가능
+
+### 신규 기능: Approved Requests Download
+
+- [ ] 승인된 요청 목록 조회 (필터링)
+- [ ] 기간/Writer/Device 필터 작동
+- [ ] Excel 다운로드 기능
+- [ ] Excel 파일 포맷 확인 (헤더, 데이터)
+
+### 신규 기능: Selected Draft Version
+
+- [ ] Writer가 드래프트 버전 선택
+- [ ] Selected 배지 표시
+- [ ] 선택 변경 시 이전 선택 해제
+- [ ] Designer가 선택된 버전만 승인/거절 가능
+
+### 신규 기능: User List
+
+- [ ] 모든 역할에서 사용자 목록 조회 가능
+- [ ] 이름순 정렬
+- [ ] Request 할당 시 드롭다운에 사용
 
 ### UI/UX
 
 - [ ] 역할 전환 작동 (Designer/Writer/Admin)
 - [ ] 데이터 소스 선택 UI 작동
 - [ ] 드래프트 메타데이터 표시 (RAG 정보)
+- [ ] Activity Timeline 통합 표시 (댓글, 승인, 상태변경)
 - [ ] 에러 핸들링 및 메시지 표시
 - [ ] 반응형 디자인 확인
 
@@ -1019,6 +1381,12 @@ docker exec -it dev-postgres-1 psql -U ux_writer -d ux_writer -c \
 6. **CSV 배치 업로드** 기능 완전 동작
 7. **Pagination** 기능 완전 동작
 8. **통계 API** 정상 작동
+9. **Comments 시스템** 정상 작동 (Activity Timeline 통합)
+10. **Request Cancellation** 기능 및 권한 검증
+11. **Device Management** (Admin) CRUD 작동
+12. **Approved Requests Download** 및 Excel 다운로드
+13. **Selected Draft Version** 선택 및 표시
+14. **Request Status 확장** (needs_revision, cancelled)
 
 ---
 
@@ -1091,6 +1459,16 @@ docker compose down -v
 
 ---
 
-**문서 버전**: 1.0.0
-**최종 업데이트**: 2025-01-13
+**문서 버전**: 2.0.0
+**최종 업데이트**: 2025-01-19
 **작성자**: Claude Code
+
+**주요 변경 사항 (v2.0.0)**:
+- ✅ Request Status 확장 (needs_revision, cancelled 추가)
+- ✅ Comments 시스템 추가 (Activity Timeline 통합)
+- ✅ Request Cancellation 기능 추가
+- ✅ Device Management (Admin) 추가
+- ✅ Approved Requests Download 기능 추가
+- ✅ Selected Draft Version 기능 추가
+- ✅ User List API 추가
+- ✅ 테이블 개수 업데이트 (15개 → 16개)

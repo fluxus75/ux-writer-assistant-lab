@@ -16,6 +16,16 @@ from app.db import get_db_session, models
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
+class UserResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    role: str
+
+    class Config:
+        from_attributes = True
+
+
 class DeviceResponse(BaseModel):
     id: str
     display_name_ko: str
@@ -39,6 +49,17 @@ class DeviceUpdatePayload(BaseModel):
     display_name_en: Optional[str] = Field(default=None, min_length=1, max_length=255)
     category: Optional[str] = Field(default=None, max_length=64)
     active: Optional[bool] = None
+
+
+@router.get("/users", response_model=List[UserResponse])
+def list_users(
+    session: Session = Depends(get_db_session),
+    user: models.User = Depends(current_user(models.UserRole.ADMIN, models.UserRole.DESIGNER, models.UserRole.WRITER)),
+):
+    """Get all users."""
+    stmt = select(models.User).order_by(models.User.name)
+    users = list(session.scalars(stmt))
+    return users
 
 
 @router.get("/devices", response_model=List[DeviceResponse])

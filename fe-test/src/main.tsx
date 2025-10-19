@@ -7,6 +7,7 @@ import { UserProvider, useUser } from './components/UserContext';
 import { useHashRoute } from './hooks/useHashRoute';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { DesignerDashboard } from './pages/DesignerDashboard';
+import { DownloadPage } from './pages/DownloadPage';
 import { RequestCreate } from './pages/RequestCreate';
 import { RequestBatchCreate } from './pages/RequestBatchCreate';
 import { RequestDetail } from './pages/RequestDetail';
@@ -35,6 +36,8 @@ function RouterView() {
     view = <RequestDetail requestId={requestId} mode="work" onBack={() => (window.location.hash = '')} />;
   } else if (segment === 'create-request') {
     view = <RequestCreate />;
+  } else if (segment === 'download') {
+    view = <DownloadPage />;
   } else if (segment === 'system-tools') {
     view = <AdminDashboard initialSection="system" />;
   } else {

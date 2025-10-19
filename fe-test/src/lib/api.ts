@@ -309,3 +309,62 @@ export interface CommentListResponse {
 export function getRequestComments(requestId: string) {
   return apiCall<CommentListResponse>(`/v1/requests/${requestId}/comments`);
 }
+
+// Approved Requests Download API
+export interface ApprovedRequestItem {
+  id: string;
+  title: string;
+  feature_name: string;
+  source_text?: string | null;
+  approved_draft_content?: string | null;
+  device?: string | null;
+  assigned_writer_id?: string | null;
+  assigned_writer_name?: string | null;
+  approved_at: string;
+  created_at: string;
+}
+
+export interface ApprovedRequestListResponse {
+  items: ApprovedRequestItem[];
+  total_count: number;
+}
+
+export interface GetApprovedRequestsParams {
+  from_date?: string;
+  to_date?: string;
+  writer_id?: string;
+  device?: string;
+}
+
+export function getApprovedRequests(params?: GetApprovedRequestsParams) {
+  const queryParams = new URLSearchParams();
+  if (params?.from_date) queryParams.append('from_date', params.from_date);
+  if (params?.to_date) queryParams.append('to_date', params.to_date);
+  if (params?.writer_id) queryParams.append('writer_id', params.writer_id);
+  if (params?.device) queryParams.append('device', params.device);
+
+  const queryString = queryParams.toString();
+  const url = queryString ? `/v1/requests/approved?${queryString}` : '/v1/requests/approved';
+
+  return apiCall<ApprovedRequestListResponse>(url);
+}
+
+export async function downloadRequestsExcel(requestIds: string[]): Promise<Blob> {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...getAuthHeaders(),
+  };
+
+  const response = await fetch(`${API_BASE}/v1/requests/download/excel`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ request_ids: requestIds }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`${response.status} ${response.statusText}${errorText ? `: ${errorText}` : ''}`);
+  }
+
+  return await response.blob();
+}

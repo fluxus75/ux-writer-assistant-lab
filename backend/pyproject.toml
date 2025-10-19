@@ -19,6 +19,7 @@ dependencies = [
     "numpy>=1.26.0",
     "onnxruntime>=1.17.0",
     "tokenizers>=0.15.2",
+    "openpyxl>=3.1.0",
 ]
 
 [project.optional-dependencies]

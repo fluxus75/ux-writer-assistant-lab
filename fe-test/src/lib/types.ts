@@ -12,16 +12,24 @@ export type RequestStatus = 'drafting' | 'in_review' | 'approved' | 'rejected' |
 export interface RequestSummary {
   id: string;
   title: string;
+  status: RequestStatus;
+  source_text?: string | null;
+  latest_draft_content?: string | null;
+  assigned_writer_id?: string | null;
+  assigned_writer_name?: string | null;
+  requested_by_name?: string | null;
+  updated_at: string;
+}
+
+export interface RequestDetail {
+  id: string;
+  title: string;
   feature_name: string;
   status: RequestStatus;
   requested_by: string;
   assigned_writer_id?: string | null;
   created_at: string;
   updated_at: string;
-  draft_count: number;
-}
-
-export interface RequestDetail extends RequestSummary {
   context_description?: string | null;
   source_text?: string | null;
   tone?: string | null;

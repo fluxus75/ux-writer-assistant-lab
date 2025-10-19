@@ -1,6 +1,7 @@
 README.md
 pyproject.toml
 app/main.py
+app/api/v1/admin.py
 app/api/v1/approvals.py
 app/api/v1/comments.py
 app/api/v1/drafts.py
@@ -18,6 +19,7 @@ app/db/session.py
 app/models/contracts.py
 app/services/approvals/__init__.py
 app/services/approvals/service.py
+app/services/audit/__init__.py
 app/services/audit/service.py
 app/services/comments/__init__.py
 app/services/comments/service.py
@@ -32,14 +34,19 @@ app/services/rag/__init__.py
 app/services/rag/config.py
 app/services/rag/embedding.py
 app/services/requests/__init__.py
+app/services/requests/csv_validator.py
 app/services/requests/service.py
 app/services/retrieve/service.py
+app/services/taxonomy/__init__.py
+app/services/taxonomy/normalizer.py
 app/services/translate/prompting.py
 app/services/translate/service.py
+tests/test_admin_devices.py
 tests/test_api_health.py
 tests/test_api_ingest.py
 tests/test_api_retrieve.py
 tests/test_api_translate.py
+tests/test_taxonomy_normalizer.py
 tests/test_workflow_endpoints.py
 ux_writer_assistant_backend.egg-info/PKG-INFO
 ux_writer_assistant_backend.egg-info/SOURCES.txt

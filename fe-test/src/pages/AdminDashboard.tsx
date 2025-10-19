@@ -8,12 +8,12 @@ import { Translate } from './Translate';
 
 const STATUS_ORDER: RequestStatus[] = ['drafting', 'needs_revision', 'in_review', 'approved', 'rejected', 'cancelled'];
 const STATUS_LABELS: Record<RequestStatus, string> = {
-  drafting: '작성중',
-  needs_revision: '재작업 필요',
-  in_review: '검토중',
-  approved: '승인됨',
+  drafting: '작성 요청',
+  needs_revision: '재작성 요청',
+  in_review: '디자이너 리뷰요청',
+  approved: '승인완료',
   rejected: '반려됨',
-  cancelled: '취소됨',
+  cancelled: '요청 취소',
 };
 
 type AdminDashboardProps = {

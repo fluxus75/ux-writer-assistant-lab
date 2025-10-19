@@ -1,18 +1,19 @@
 import React from 'react';
 import { Pagination } from '../components/Pagination';
-import { RequestCard } from '../components/RequestCard';
+import { StatusBadge } from '../components/StatusBadge';
 import { useUser } from '../components/UserContext';
 import { usePaginatedRequests } from '../hooks/usePaginatedRequests';
+import { formatDateTime, truncateText } from '../lib/utils';
 import type { RequestStatus } from '../lib/types';
 
 const FILTER_LABELS: { value: RequestStatus | 'all'; label: string }[] = [
   { value: 'all', label: '전체' },
-  { value: 'drafting', label: '작성중' },
-  { value: 'needs_revision', label: '재작업 필요' },
-  { value: 'in_review', label: '검토중' },
-  { value: 'approved', label: '승인됨' },
+  { value: 'drafting', label: '작성 요청' },
+  { value: 'needs_revision', label: '재작성 요청' },
+  { value: 'in_review', label: '디자이너 리뷰요청' },
+  { value: 'approved', label: '승인완료' },
   { value: 'rejected', label: '반려됨' },
-  { value: 'cancelled', label: '취소됨' },
+  { value: 'cancelled', label: '요청 취소' },
 ];
 
 export function DesignerDashboard() {
@@ -90,21 +91,70 @@ export function DesignerDashboard() {
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="grid gap-4">
-        {requests.map((request) => (
-          <RequestCard
-            key={request.id}
-            request={request}
-            onClick={() => {
-              window.location.hash = `request/${request.id}`;
-            }}
-          />
-        ))}
-        {!loading && requests.length === 0 && (
-          <div className="rounded-lg border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
-            표시할 요청이 없습니다.
-          </div>
-        )}
+      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  제목
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  원문 (KO)
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  영문 드래프트
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  작가
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  상태
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  상태 변경 일시
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {requests.map((request) => (
+                <tr
+                  key={request.id}
+                  onClick={() => {
+                    window.location.hash = `request/${request.id}`;
+                  }}
+                  className="cursor-pointer transition-colors hover:bg-slate-50"
+                >
+                  <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                    {truncateText(request.title, 20)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {truncateText(request.source_text, 30)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {truncateText(request.latest_draft_content, 30)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {request.assigned_writer_name || '-'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={request.status} />
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-500">
+                    {formatDateTime(request.updated_at)}
+                  </td>
+                </tr>
+              ))}
+              {!loading && requests.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">
+                    표시할 요청이 없습니다.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {pagination && pagination.total_pages > 1 && (

@@ -19,6 +19,7 @@ export function Navigation() {
         return [
           { icon: '📋', label: '내 요청 목록', path: '' },
           { icon: '➕', label: '새 요청 생성', path: 'create-request' },
+          { icon: '📥', label: '문구 다운로드', path: 'download' },
         ];
       case 'writer':
         return [{ icon: '📋', label: '작업 목록', path: '' }];

@@ -26,7 +26,7 @@ flowchart LR
     OpenAI["LLM client"]
   end
 
-  Clients -->|HTTP (role headers)| Middleware --> APIRouter --> Services
+  Clients -->|"HTTP (role headers)"| Middleware --> APIRouter --> Services
   Services --> DB
   Services --> Cache
   Services --> Qdrant
